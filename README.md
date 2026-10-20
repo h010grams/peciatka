@@ -103,6 +103,12 @@ pnpm --filter api exec prisma migrate deploy   # once, and after new migrations
 pnpm dev                                       # terminal 2: API on :3001, web on :5174
 ```
 
+Or, on macOS, start everything with one command (`./start.sh --phone` also opens a temporary HTTPS address for testing on a phone; `./stop.sh` stops it all):
+
+```bash
+./start.sh
+```
+
 Open http://localhost:5174 and register a salon. Without a mail provider key, emails (invitations, password reset) are printed to the API console.
 
 Apple Wallet and Google Wallet are optional: without credentials the Wallet buttons are hidden and clients use the web card. See [DEPLOY.md](DEPLOY.md) for credentials and deployment (Docker, Railway/Render + Neon).

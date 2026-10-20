@@ -13,3 +13,4 @@ apps/web/.tunnel.log
 
 # локальные настройки Claude Code
 .claude/settings.local.json
+.run/
