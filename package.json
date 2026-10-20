@@ -1,0 +1,18 @@
+{
+  "name": "peciatka",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db": "pnpm --filter api db:start",
+    "dev": "pnpm --parallel --filter api --filter web dev",
+    "test": "pnpm --filter api test",
+    "typecheck": "pnpm -r typecheck",
+    "build": "pnpm --filter web build && pnpm --filter api build",
+    "start": "pnpm --filter api start",
+    "start:prod": "pnpm --filter api start:prod"
+  },
+  "packageManager": "pnpm@12.9.1",
+  "engines": {
+    "node": ">=22"
+  }
+}

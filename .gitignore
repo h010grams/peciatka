@@ -1,0 +1,15 @@
+node_modules
+dist
+.env
+*.log
+.DS_Store
+apps/api/.pgdata
+certs/*
+!certs/.gitkeep
+apps/api/.pgdata-server.log
+*.dev-server.log
+.dev-server.log
+apps/web/.tunnel.log
+
+# локальные настройки Claude Code
+.claude/settings.local.json

@@ -1,0 +1,343 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Все даты хранятся в UTC (timestamptz), отображаются в часовом поясе салона.
+
+enum Role {
+  OWNER
+  STAFF
+}
+
+enum Locale {
+  sk
+  en
+  uk
+}
+
+enum StampType {
+  ADD
+  REVOKE
+}
+
+enum RewardStatus {
+  AVAILABLE
+  REDEEMED
+  VOID
+}
+
+enum CardStatus {
+  ACTIVE
+  VOIDED
+}
+
+// ───────── Тенанты и пользователи ─────────
+
+model Salon {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String
+  slug          String   @unique // публичный URL: /j/{slug}
+  defaultLocale Locale   @default(sk)
+  timezone      String   @default("Europe/Bratislava")
+  address       String?
+  phone         String?
+  createdAt     DateTime @default(now()) @db.Timestamptz
+
+  memberships  Membership[]
+  invites      Invite[]
+  programs     LoyaltyProgram[]
+  customers    Customer[]
+  cards        Card[]
+  stampEvents  StampEvent[]
+  rewards      Reward[]
+  assets       Asset[]
+  appointments Appointment[]
+  auditLogs    AuditLog[]
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique // всегда lower-case
+  passwordHash String
+  name         String
+  locale       Locale   @default(sk)
+  createdAt    DateTime @default(now()) @db.Timestamptz
+
+  memberships    Membership[]
+  sessions       Session[]
+  passwordResets PasswordResetToken[]
+}
+
+model Membership {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  salonId   String   @db.Uuid
+  role      Role
+  active    Boolean  @default(true) // мастера отключаем, а не удаляем — журнал сохраняется
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, salonId])
+  @@index([salonId])
+}
+
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  tokenHash String   @unique // в cookie — токен, в БД — sha256
+  userId    String   @db.Uuid
+  salonId   String?  @db.Uuid // выбранный сейчас салон
+  expiresAt DateTime @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime  @db.Timestamptz
+  usedAt    DateTime? @db.Timestamptz
+  createdAt DateTime  @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Invite {
+  id         String    @id @default(uuid()) @db.Uuid
+  salonId    String    @db.Uuid
+  email      String
+  role       Role      @default(STAFF)
+  tokenHash  String    @unique
+  expiresAt  DateTime  @db.Timestamptz
+  acceptedAt DateTime? @db.Timestamptz
+  createdAt  DateTime  @default(now()) @db.Timestamptz
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  @@index([salonId])
+}
+
+// ───────── Программа и дизайн ─────────
+
+model Asset {
+  id        String   @id @default(uuid()) @db.Uuid
+  salonId   String   @db.Uuid
+  mime      String
+  data      Bytes
+  width     Int
+  height    Int
+  sha256    String
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  salon    Salon            @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  logoFor  LoyaltyProgram[] @relation("ProgramLogo")
+  stripFor LoyaltyProgram[] @relation("ProgramStrip")
+}
+
+model LoyaltyProgram {
+  id             String  @id @default(uuid()) @db.Uuid
+  salonId        String  @db.Uuid
+  name           String
+  stampsRequired Int // N
+  rewardText     String
+  cooldownHours  Int     @default(12) // не больше 1 штампа за N часов
+  isActive       Boolean @default(true)
+
+  bgColor      String  @default("#1F1F1F")
+  fgColor      String  @default("#FFFFFF")
+  labelColor   String  @default("#C9A96E")
+  logoAssetId  String? @db.Uuid
+  stripAssetId String? @db.Uuid
+
+  googleClassId String? @unique
+  designVersion Int     @default(1)
+
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  salon Salon  @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  logo  Asset? @relation("ProgramLogo", fields: [logoAssetId], references: [id], onDelete: SetNull)
+  strip Asset? @relation("ProgramStrip", fields: [stripAssetId], references: [id], onDelete: SetNull)
+  cards Card[]
+
+  @@unique([salonId]) // MVP: одна программа на салон
+}
+
+// ───────── Клиенты и карты ─────────
+
+model Customer {
+  id             String    @id @default(uuid()) @db.Uuid
+  salonId        String    @db.Uuid
+  name           String
+  phoneE164      String?
+  email          String?
+  locale         Locale    @default(sk)
+  consentAt      DateTime  @db.Timestamptz
+  consentVersion String
+  createdAt      DateTime  @default(now()) @db.Timestamptz
+  anonymizedAt   DateTime? @db.Timestamptz
+
+  salon Salon  @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  cards Card[]
+
+  @@unique([salonId, phoneE164])
+  @@unique([salonId, email])
+  @@index([salonId, createdAt])
+}
+
+model Card {
+  id         String @id @default(uuid()) @db.Uuid
+  salonId    String @db.Uuid
+  programId  String @db.Uuid
+  customerId String @db.Uuid
+
+  serialNumber   String     @unique @default(uuid())
+  qrToken        String     @unique
+  appleAuthToken String
+  status         CardStatus @default(ACTIVE)
+
+  stampCount       Int       @default(0)
+  rewardsAvailable Int       @default(0)
+  totalVisits      Int       @default(0)
+  lastStampAt      DateTime? @db.Timestamptz
+
+  walletUpdatedAt DateTime  @default(now()) @db.Timestamptz
+  // Последнее уведомление клиентке (напоминание о записи и т. п.).
+  // В Apple Wallet показывается через поле с changeMessage → push на экране.
+  walletNotice    String?
+  googleObjectId  String?   @unique
+  googleSavedAt   DateTime? @db.Timestamptz
+  createdAt       DateTime  @default(now()) @db.Timestamptz
+
+  salon         Salon                      @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  program       LoyaltyProgram             @relation(fields: [programId], references: [id])
+  customer      Customer                   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  stampEvents   StampEvent[]
+  rewards       Reward[]
+  registrations WalletDeviceRegistration[]
+  appointments  Appointment[]
+  syncJob       WalletSyncJob?
+
+  @@unique([customerId, programId])
+  @@index([salonId, lastStampAt])
+}
+
+// ───────── События ─────────
+
+model StampEvent {
+  id             String    @id @default(uuid()) @db.Uuid
+  salonId        String    @db.Uuid
+  cardId         String    @db.Uuid
+  type           StampType
+  actorUserId    String    @db.Uuid
+  revokesEventId String?   @unique @db.Uuid
+  createdAt      DateTime  @default(now()) @db.Timestamptz
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  card  Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([salonId, createdAt])
+  @@index([cardId, createdAt])
+}
+
+model Reward {
+  id               String       @id @default(uuid()) @db.Uuid
+  salonId          String       @db.Uuid
+  cardId           String       @db.Uuid
+  status           RewardStatus @default(AVAILABLE)
+  earnedByEventId  String       @unique @db.Uuid
+  earnedAt         DateTime     @default(now()) @db.Timestamptz
+  redeemedAt       DateTime?    @db.Timestamptz
+  redeemedByUserId String?      @db.Uuid
+  voidedAt         DateTime?    @db.Timestamptz
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  card  Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([salonId, status])
+  @@index([cardId, status])
+}
+
+// ───────── Apple PassKit Web Service ─────────
+
+model AppleDevice {
+  id              String   @id @default(uuid()) @db.Uuid
+  deviceLibraryId String   @unique
+  pushToken       String
+  updatedAt       DateTime @updatedAt @db.Timestamptz
+
+  registrations WalletDeviceRegistration[]
+}
+
+model WalletDeviceRegistration {
+  id        String   @id @default(uuid()) @db.Uuid
+  deviceId  String   @db.Uuid
+  cardId    String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  device AppleDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  card   Card        @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@unique([deviceId, cardId])
+}
+
+// Outbox: «карту нужно синхронизировать с Wallet». Одна запись на карту —
+// частые изменения схлопываются. Обрабатывает воркер с повторами при ошибках.
+model WalletSyncJob {
+  id            String   @id @default(uuid()) @db.Uuid
+  cardId        String   @unique @db.Uuid
+  notify        String? // текст push-уведомления для Google Wallet
+  attempts      Int      @default(0)
+  nextAttemptAt DateTime @default(now()) @db.Timestamptz
+  lastError     String?
+  createdAt     DateTime @default(now()) @db.Timestamptz
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([nextAttemptAt])
+}
+
+// ───────── Опционально: следующая запись ─────────
+
+model Appointment {
+  id              String    @id @default(uuid()) @db.Uuid
+  salonId         String    @db.Uuid
+  cardId          String    @db.Uuid
+  startsAt        DateTime  @db.Timestamptz
+  createdByUserId String    @db.Uuid
+  reminderSentAt  DateTime? @db.Timestamptz
+  cancelledAt     DateTime? @db.Timestamptz
+  createdAt       DateTime  @default(now()) @db.Timestamptz
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  card  Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([startsAt, reminderSentAt])
+}
+
+// ───────── Журнал действий ─────────
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  salonId     String   @db.Uuid
+  actorUserId String?  @db.Uuid
+  action      String // "stamp.add", "staff.invite", "salon.update", …
+  entityType  String
+  entityId    String
+  payload     Json?
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  @@index([salonId, createdAt])
+}

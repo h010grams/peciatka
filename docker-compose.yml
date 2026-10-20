@@ -1,0 +1,15 @@
+# Альтернатива `pnpm db` для тех, у кого есть Docker.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: peciatka
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./apps/api/scripts/create-test-db.sql:/docker-entrypoint-initdb.d/create-test-db.sql
+volumes:
+  pgdata:
