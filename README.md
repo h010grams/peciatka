@@ -1,104 +1,134 @@
-# Pečiatka — цифровые карты лояльности для салонов
+# Pečiatka — digital loyalty cards for small salons
 
-Салон создаёт программу «N визитов → награда», печатает QR-постер; клиентка сканирует его и получает карту
-в Apple Wallet / Google Wallet; мастер сканирует карту телефоном и ставит штамп — карта обновляется сама и присылает уведомление.
+**Pečiatka** (Slovak for *"stamp"*) replaces paper stamp cards in small beauty salons — nail studios, barbershops, hair and brow/lash salons — with a digital loyalty card that lives in **Apple Wallet** and **Google Wallet**.
 
-Монорепозиторий: `apps/api` (Fastify + Prisma + PostgreSQL), `apps/web` (React + Vite + Tailwind, PWA), `packages/shared` (Zod-схемы и DTO).
-Деплой — в [DEPLOY.md](DEPLOY.md).
+A client scans a QR code at the counter and gets the card on her phone in under a minute. At checkout, the stylist scans the card with their own phone and adds a stamp — the card in the client's Wallet updates itself and shows a notification. After N visits the reward appears automatically.
 
-## Запуск локально
+No app to install, no account for the client, setup in about 10 minutes for the salon.
 
-Нужны Node.js 22+ и pnpm (`corepack enable pnpm`). PostgreSQL ставится как npm-пакет — Docker не нужен
-(или `docker compose up -d`, если Docker есть).
+<p align="center">
+  <img src="docs/images/customer-card.jpg" alt="Customer loyalty card with stamps, reward and next appointment" width="300">
+</p>
+
+## Features
+
+**Salon owner**
+- Loyalty program setup: number of stamps, reward, card colors and logo, with a live card preview
+- Printable QR poster (A4 / A5 PDF) for the counter
+- Dashboard: visits, new and returning clients, rewards, visits per day
+- Team management: invite staff by link, roles (owner / staff), deactivate access
+- Activity log of every staff action
+- GDPR tools: export all data of a client as JSON, delete (anonymize) a client
+
+**Staff**
+- QR scanner in the browser (installable PWA), with name/phone search as a fallback
+- Add a stamp, redeem a reward, undo a mistaken stamp within 24 hours
+- Set the client's next appointment — it appears on the card, with a reminder a day before
+
+**Client**
+- Sign-up page: name, phone or email, explicit consent
+- Card in Apple Wallet / Google Wallet, or a web card with a QR code
+- Push notifications for new stamps, rewards and appointment reminders
+
+**Everywhere:** Slovak, English and Ukrainian; times stored in UTC and shown in the salon's time zone (Europe/Bratislava).
+
+## Tech stack
+
+| Layer | Technologies |
+|---|---|
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS, TanStack Query, React Hook Form, react-i18next, PWA |
+| Backend | Node.js, Fastify, TypeScript, Zod |
+| Database | PostgreSQL, Prisma ORM |
+| Wallet | `passkit-generator` (Apple), APNs over HTTP/2, Google Wallet REST API, RS256-signed JWT |
+| Other | Sharp (image processing), PDFKit (posters), Vitest, Docker |
+
+Monorepo with pnpm workspaces: `apps/api`, `apps/web`, and `packages/shared` (Zod schemas and DTOs shared by both sides).
+
+## Engineering highlights
+
+### Updating a card that lives in someone else's app
+
+<img src="docs/images/wallet-flow.png" alt="Apple and Google Wallet update flows" width="420" align="right">
+
+The two Wallet platforms work very differently:
+
+- **Apple Wallet** — the card is a signed `.pkpass` file. When it changes, the server sends an empty push through APNs; the iPhone then calls the server's **PassKit Web Service**, asks which cards changed since its last sync, and downloads a freshly signed pass.
+- **Google Wallet** — the card is an object stored by Google. The server updates it through the Wallet REST API and Google delivers the change. Notifications are separate messages, limited to about 3 per card per day.
+
+Each event (stamp, reward, reminder) produces exactly **one** notification: through a back-of-card field with `changeMessage` on Apple, and a `TEXT_AND_NOTIFY` message on Google.
+
+<br clear="right">
+
+### No double stamps, no lost updates
+
+<img src="docs/images/concurrency.png" alt="Two simultaneous scans produce exactly one stamp" width="420" align="right">
+
+- Every stamp runs in a transaction that starts with `SELECT … FOR UPDATE` on the card row. Two stylists scanning the same card at the same moment get exactly one stamp; the second request sees the fresh timestamp and hits the cooldown. There is an integration test that fires four simultaneous requests.
+- **Outbox pattern:** the Wallet update job is written in the same transaction as the stamp. A worker sends it to Apple/Google and retries with exponential backoff, so a temporary outage never leaves a card out of sync.
+- The business rules (cooldown, rewards, undo) are pure functions in `apps/api/src/domain/stamping.ts`, unit-tested without a database.
+
+<br clear="right">
+
+### Multi-tenancy and security
+- Each salon is a tenant. A request guard resolves the salon from the session and checks an active membership; handlers only ever use that salon ID. A card from another salon looks like it doesn't exist (404).
+- Sessions in httpOnly SameSite cookies; only a SHA-256 hash of the token is stored. Passwords hashed with Argon2. Rate limits on login, sign-up and public endpoints.
+- Every change is written to an audit log in the same transaction as the change itself.
+
+### GDPR by design
+- Minimal data: a name plus a phone number or email.
+- Consent is stored with a timestamp and the version of the consent text.
+- One-click JSON export of everything stored about a client.
+- Deletion anonymizes personal data and voids the card in Apple/Google Wallet, while keeping anonymous visit statistics intact.
+
+## Tests
+
+85 automated tests (Vitest):
+- unit tests for the stamping rules,
+- integration tests against a real PostgreSQL database: authentication, tenant isolation, roles, invitations, stamping, cooldown, concurrent scans, rewards, undo, reminders, customer search, GDPR export/deletion, statistics,
+- Wallet tests with self-signed certificates and mocked network calls: `.pkpass` contents and signature, the full PassKit Web Service flow, APNs token cleanup, retries, Google JWT signature and object updates.
+
+```bash
+pnpm test
+```
+
+## Running locally
+
+Requirements: Node.js 22+ and pnpm. PostgreSQL runs as an npm package, so Docker is not required (a `docker-compose.yml` is included if you prefer it).
 
 ```bash
 pnpm install
 cp .env.example .env
-pnpm db                                        # терминал 1: PostgreSQL на :5434, держать открытым
-pnpm --filter api exec prisma migrate deploy   # один раз и после новых миграций
-pnpm dev                                       # терминал 2: API :3001 + фронт :5174
+pnpm db                                        # terminal 1: PostgreSQL on :5434
+pnpm --filter api exec prisma migrate deploy   # once, and after new migrations
+pnpm dev                                       # terminal 2: API on :3001, web on :5174
 ```
 
-Откройте http://localhost:5174. Письма без `RESEND_API_KEY` печатаются в консоль API.
+Open http://localhost:5174 and register a salon. Without a mail provider key, emails (invitations, password reset) are printed to the API console.
 
-### Тестовые данные, созданные при проверке
+Apple Wallet and Google Wallet are optional: without credentials the Wallet buttons are hidden and clients use the web card. See [DEPLOY.md](DEPLOY.md) for credentials and deployment (Docker, Railway/Render + Neon).
 
-| Роль | Email | Пароль |
-|---|---|---|
-| Владелец | owner@demo.test | demo-heslo-123 |
-| Мастер | master@demo.test | demo-heslo-123 |
+## Project structure
 
-Салон: «Nechtové štúdio Žaneta», страница для клиентов `/j/nechtove-studio-zaneta`.
-
-## Что умеет
-
-| Роль | Экран | Что делает |
-|---|---|---|
-| Владелец | Prehľad | визиты, новые клиенты, вернувшиеся, награды; график по дням (+ таблица) |
-| Владелец | Viac → Program a karta | N штампов, награда, лимит часов, цвета, логотип, живое превью; постер A4/A5 и QR |
-| Владелец | Viac → Tím | приглашение мастеров, роли, отключение |
-| Владелец | Viac → Denník akcií | журнал всех действий мастеров |
-| Мастер / владелец | Skener | камера → карта клиентки; ручной поиск по имени/телефону, если камера не работает |
-| Мастер / владелец | Карта клиентки | +1 штамп, награда, отмена ошибочного штампа (24 ч), следующая запись |
-| Мастер / владелец | Klienti | список, поиск, история визитов |
-| Владелец | Клиентка | экспорт данных (JSON) и удаление по GDPR |
-| Клиентка | `/j/<salon>` | регистрация: имя, телефон или email, согласие |
-| Клиентка | `/c/<serial>` | веб-карта с QR + кнопки Apple / Google Wallet |
-
-Правила: награда создаётся на N-м штампе, счётчик сразу начинает новый цикл (награды копятся).
-Не больше одного штампа за N часов (настраивается, 0 — без лимита). Штамп можно отменить в течение 24 часов,
-если выданная им награда ещё не использована.
-
-## Команды
-
-| Команда | Что делает |
-|---|---|
-| `pnpm test` | 84 теста: юнит-тесты правил + интеграционные на реальной БД `peciatka_test` |
-| `pnpm typecheck` | проверка типов во всех пакетах |
-| `pnpm build` | сборка фронта и API |
-| `pnpm start:prod` | миграции + продакшен-сервер (API и SPA с одного порта) |
-| `pnpm --filter api db:migrate --name <имя>` | новая миграция после правки `schema.prisma` |
-| `pnpm --filter api db:studio` | просмотр БД в браузере |
-
-## Проверка на реальном телефоне
-
-**Без HTTPS (тот же Wi-Fi)** — админка, регистрация клиентки, веб-карта, штампы через ручной поиск:
-откройте `http://<IP-Mac>:5174` (IP: `ipconfig getifaddr en0`).
-
-**С HTTPS** — нужен для камеры (сканер) и Wallet. Туннель Cloudflare:
-
-```bash
-cloudflared tunnel --url http://localhost:5174
+```
+apps/
+  api/            Fastify API
+    prisma/       database schema and migrations
+    src/domain/   pure business rules
+    src/modules/  routes: auth, staff, program, public, cards, customers, stats, wallet
+    src/services/ cards, images, Apple & Google Wallet, sync worker
+    test/         unit and integration tests
+  web/            React PWA (owner, staff and client screens)
+packages/
+  shared/         Zod schemas and types used by both apps
 ```
 
-Пропишите выданный `https://….trycloudflare.com` в `APP_URL` в `.env` и перезапустите `pnpm dev`.
-Важно: адрес туннеля попадает в карты Wallet, поэтому при новом адресе удалите тестовые карты из Wallet и добавьте заново.
+## Status
 
-## Wallet: что получить заранее
+Working MVP. Next steps: deployment, Wallet testing on real devices, and a pilot with salons in Bratislava. Planned: "time for your next visit" reminders based on each client's visit rhythm, Google review prompts, and referral rewards.
 
-**Apple** (Apple Developer Program, $99/год):
-Certificates, IDs & Profiles → Identifiers → **Pass Type IDs** → создать (`pass.sk.<бренд>.loyalty`) → Create Certificate
-(CSR из Keychain Access) → скачать `pass.cer` → импорт в Keychain → экспорт `.p12`.
-Плюс сертификат **Apple WWDR G4** с apple.com/certificateauthority. Конвертация в PEM и переменные — в [DEPLOY.md](DEPLOY.md#5-apple-wallet).
+## Author
 
-**Google**: проект в Google Cloud с Google Wallet API, сервисный аккаунт + JSON-ключ,
-Issuer account в pay.google.com/business/console (сервисный аккаунт добавить в Users). Подробно — в [DEPLOY.md](DEPLOY.md#6-google-wallet).
+**Nikita Kolotusha** — product idea, scope, architecture and development.
+GitHub: [@h010grams](https://github.com/h010grams)
 
-Без ключей всё остальное работает: кнопки Wallet скрываются, у клиентки остаётся веб-карта с QR.
-
-## Архитектура: важное
-
-- **Multi-tenancy:** `requireTenant()` проверяет активное членство в салоне из сессии; хендлеры берут `salonId` только из `req.tenant`. Карта чужого салона выглядит как несуществующая (404).
-- **Штампы:** транзакция + `SELECT … FOR UPDATE` на строку карты — одновременные сканы не дают двойного штампа. Правила — чистые функции в `apps/api/src/domain/stamping.ts`.
-- **Wallet-синхронизация (outbox):** изменение карты в той же транзакции ставит задачу в `WalletSyncJob`; воркер обновляет объект Google и шлёт push в APNs, при ошибке повторяет с паузой. Уведомление клиентке — одно на событие (поле `walletNotice` с `changeMessage` в Apple, сообщение `TEXT_AND_NOTIFY` в Google).
-- **Журнал:** все изменения — в `AuditLog` в той же транзакции.
-- **Время:** в БД `timestamptz` (UTC); статистика по дням и время записи — в часовом поясе салона (`Europe/Bratislava`).
-- **GDPR:** минимум данных (имя + телефон/email), согласие с датой и версией текста, экспорт JSON, удаление = обезличивание + аннулирование карты в Wallet.
-- **i18n:** sk / en / uk — интерфейс, письма, тексты в Wallet (на языке клиентки), постер.
-
-## Известные ограничения MVP
-
-- **Кто угодно, зная телефон клиентки, может получить её карту** (повторная регистрация с тем же номером возвращает ту же карту — это нужно, чтобы клиентка восстановила карту на новом телефоне). Защита: мастер видит имя на экране при скане. Если станет проблемой — подтверждение кодом по SMS/email.
-- Одна программа на салон.
-- Кнопки Wallet — текстовые; перед публичным запуском замените на официальные бейджи Apple/Google.
-- Тексты согласия и страницы о защите данных — шаблон, нужна проверка юристом.
+Built with AI-assisted development (Claude Code); product decisions, architecture choices, testing and review by the author.

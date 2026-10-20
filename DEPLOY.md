@@ -1,123 +1,118 @@
-# Деплой: Railway (или Render) + Neon
+# Deployment: Railway (or Render) + Neon
 
-Один контейнер (Dockerfile) отдаёт API, фронт и PassKit Web Service с одного домена.
-Миграции применяются автоматически при старте (`prisma migrate deploy`).
+A single container (see `Dockerfile`) serves the API, the web app and the PassKit Web Service from one domain.
+Database migrations run automatically on start (`prisma migrate deploy`).
 
-> **HTTPS обязателен:** без него не работают Apple Wallet (webServiceURL), камера в браузере и Secure-cookie.
-> Railway и Render выдают HTTPS автоматически — и на своём поддомене, и на вашем домене.
+> **HTTPS is required:** Apple Wallet (`webServiceURL`), the in-browser camera and Secure cookies don't work without it.
+> Railway and Render provide HTTPS automatically, both on their subdomain and on a custom domain.
 
-## 1. База данных — Neon
+## 1. Database — Neon
 
-1. https://neon.tech → New project → регион **Frankfurt (eu-central-1)** (близко к Словакии, данные в ЕС).
-2. Скопируйте **Direct connection string** (без `-pooler` в хосте) — Prisma-миграциям нужно прямое подключение.
-   Вид: `postgresql://user:pass@ep-xxx.eu-central-1.aws.neon.tech/neondb?sslmode=require`
-3. Включите автоматические бэкапы (Point-in-time restore) — на бесплатном тарифе хранятся ограниченно, для продакшена возьмите платный.
+1. https://neon.tech → New project → region **Frankfurt (eu-central-1)** (close to Slovakia, data stays in the EU).
+2. Copy the **direct connection string** (no `-pooler` in the host name) — Prisma migrations need a direct connection.
+   Format: `postgresql://user:pass@ep-xxx.eu-central-1.aws.neon.tech/neondb?sslmode=require`
+3. Enable point-in-time restore backups. The free tier keeps them only briefly; use a paid plan for production.
 
-Supabase тоже подходит: Project Settings → Database → Connection string → **Session mode / direct**.
+Supabase works too: Project Settings → Database → Connection string → **Session mode / direct**.
 
-## 2. Приложение — Railway
+## 2. Application — Railway
 
-1. Залейте код в GitHub (приватный репозиторий).
-2. https://railway.app → New Project → Deploy from GitHub repo → выберите репозиторий. Railway найдёт `Dockerfile`.
-3. Settings → Networking → **Generate Domain** (или Custom Domain, см. п. 4). Порт: `3001`.
+1. Push the code to GitHub.
+2. https://railway.app → New Project → Deploy from GitHub repo → pick the repository. Railway detects the `Dockerfile`.
+3. Settings → Networking → **Generate Domain** (or a custom domain, see section 3). Port: `3001`.
 4. Settings → Deploy → Healthcheck Path: `/api/health`.
-5. Variables (минимум):
+5. Variables (minimum):
 
-| Переменная | Значение |
+| Variable | Value |
 |---|---|
-| `DATABASE_URL` | строка из Neon |
-| `APP_URL` | `https://karty.vasadomena.sk` (без `/` в конце) — **точно тот адрес, который видят клиенты** |
+| `DATABASE_URL` | connection string from Neon |
+| `APP_URL` | e.g. `https://cards.example.sk` (no trailing `/`) — **exactly the address clients see** |
 | `NODE_ENV` | `production` |
 | `PORT` | `3001` |
-| `RESEND_API_KEY` | ключ Resend (п. 5) |
-| `MAIL_FROM` | `Pečiatka <noreply@vasadomena.sk>` |
-| `APP_NAME` | название сервиса |
+| `RESEND_API_KEY` | Resend API key (section 4) |
+| `MAIL_FROM` | `Pečiatka <noreply@example.sk>` |
+| `APP_NAME` | service name |
 
-Wallet-переменные — в п. 6 и 7. После изменения переменных Railway перезапускает сервис сам.
+Wallet variables are described in sections 5 and 6. Railway restarts the service automatically when variables change.
 
-### Render (альтернатива)
-New → Web Service → репозиторий → Runtime **Docker** → Instance type: Starter (бесплатный засыпает — Wallet-запросы будут таймаутить) → те же переменные → Health Check Path `/api/health`.
+### Render (alternative)
+New → Web Service → repository → Runtime **Docker** → instance type Starter (the free tier sleeps, and Wallet requests would time out) → same variables → Health Check Path `/api/health`.
 
-### Масштабирование
-Фоновые задачи (синхронизация Wallet, напоминания) работают внутри того же процесса. Несколько инстансов безопасны:
-задачи забираются через `FOR UPDATE SKIP LOCKED`, напоминания помечаются атомарно. Для MVP хватит одного инстанса.
+### Scaling
+Background jobs (Wallet sync, reminders) run inside the same process. Multiple instances are safe: jobs are claimed with `FOR UPDATE SKIP LOCKED` and reminders are marked atomically. One instance is enough for the MVP.
 
-## 3. Свой домен
+## 3. Custom domain
 
-Купите домен (например, `.sk` у WebSupport) → в Railway: Custom Domain → добавьте CNAME у регистратора → дождитесь сертификата.
-После этого **обновите `APP_URL`**. Важно: адрес попадает в QR-постеры и в карты Wallet, поэтому выберите его до печати постеров.
+Buy a domain → Railway: Custom Domain → add the CNAME record at your registrar → wait for the certificate.
+Then **update `APP_URL`**. The address is printed on QR posters and embedded in Wallet cards, so choose it before printing posters.
 
-## 4. Почта — Resend
+## 4. Email — Resend
 
-1. https://resend.com → Domains → добавьте домен → пропишите DNS-записи (SPF, DKIM) у регистратора.
-2. API Keys → создайте ключ → `RESEND_API_KEY`.
-3. Без ключа письма (приглашения, сброс пароля) только пишутся в лог сервера.
+1. https://resend.com → Domains → add your domain → add the DNS records (SPF, DKIM) at your registrar.
+2. API Keys → create a key → `RESEND_API_KEY`.
+3. Without a key, emails (invitations, password reset) are only written to the server log.
 
 ## 5. Apple Wallet
 
-Нужны: Pass Type ID, сертификат к нему (экспорт `.p12` из Keychain) и сертификат Apple WWDR G4 — как их получить, см. раздел «Wallet: что получить заранее» в README.
+Requires an Apple Developer Program membership.
 
-```bash
-openssl pkcs12 -legacy -in pass.p12 -clcerts -nokeys -out signerCert.pem
-```
-```bash
-openssl pkcs12 -legacy -in pass.p12 -nocerts -out signerKey.pem
-```
-```bash
-openssl x509 -inform der -in AppleWWDRCAG4.cer -out wwdr.pem
-```
+1. Generate a private key and a certificate signing request (keep the key secret; `certs/` is git-ignored):
+   ```bash
+   openssl req -new -newkey rsa:2048 -nodes -keyout certs/signerKey.pem -out certs/pass.certSigningRequest -subj "/CN=Pass Type ID/C=SK"
+   ```
+2. developer.apple.com → Certificates, Identifiers & Profiles → Identifiers → **+** → **Pass Type IDs** → e.g. `pass.sk.peciatka.loyalty`.
+3. Open the Pass Type ID → **Create Certificate** → upload `pass.certSigningRequest` → download `pass.cer`.
+4. Convert the certificate and download Apple's WWDR G4 intermediate certificate (apple.com/certificateauthority):
+   ```bash
+   openssl x509 -inform der -in pass.cer -out certs/signerCert.pem
+   ```
+   ```bash
+   openssl x509 -inform der -in AppleWWDRCAG4.cer -out certs/wwdr.pem
+   ```
+5. Locally, the files in `certs/` are picked up automatically. For hosting, pass them as base64 variables (multi-line PEM in one line):
+   ```bash
+   base64 -i certs/signerCert.pem | pbcopy
+   ```
+   → `APPLE_SIGNER_CERT_B64`; likewise `signerKey.pem` → `APPLE_SIGNER_KEY_B64`, `wwdr.pem` → `APPLE_WWDR_CERT_B64`.
+   Also set `APPLE_PASS_TYPE_ID`, `APPLE_TEAM_ID` and, if the key is encrypted, `APPLE_SIGNER_KEY_PASSPHRASE`.
 
-Переменные (base64, чтобы многострочный PEM поместился в одну строку):
+**Check:** the startup log shows `Wallet: Apple on`. On an iPhone, open a client card (`/c/...`) in Safari → "Add to Apple Wallet".
+If the card can't be added, check the log: Wallet reports errors to `/api/wallet/apple/v1/log`.
 
-```bash
-base64 -i signerCert.pem | pbcopy
-```
-→ `APPLE_SIGNER_CERT_B64`; так же `signerKey.pem` → `APPLE_SIGNER_KEY_B64`, `wwdr.pem` → `APPLE_WWDR_CERT_B64`.
-Плюс `APPLE_PASS_TYPE_ID` (например `pass.sk.peciatka.loyalty`), `APPLE_TEAM_ID`, `APPLE_SIGNER_KEY_PASSPHRASE` (пароль ключа, если задавали при экспорте).
-
-Локально вместо переменных можно положить `signerCert.pem`, `signerKey.pem`, `wwdr.pem` в папку `certs/` (она в `.gitignore`).
-
-**Проверка:** в логе при старте — `Wallet: Apple on`. На iPhone откройте карту клиента (`/c/...`) в Safari → «Pridať do Apple Wallet».
-Если карта не добавляется — смотрите лог: Wallet шлёт ошибки на `/api/wallet/apple/v1/log`.
-
-**Не забудьте:** сертификат Pass Type ID действует **1 год**. Поставьте напоминание за месяц: выпустите новый, обновите переменные — уже выданные карты продолжат работать.
+**Remember:** the Pass Type ID certificate is valid for **1 year**. Renew it a month ahead and update the variables — already issued cards keep working.
 
 ## 6. Google Wallet
 
-1. Google Cloud: проект → включить **Google Wallet API** → IAM → Service Accounts → создать → Keys → Add key → JSON.
-2. https://pay.google.com/business/console → Google Wallet API → скопируйте **Issuer ID** → Users → пригласите email сервисного аккаунта (роль Developer).
-3. Переменные:
+1. Google Cloud: create a project → enable **Google Wallet API** → IAM → Service Accounts → create → Keys → Add key → JSON.
+2. https://pay.google.com/business/console → Google Wallet API → copy the **Issuer ID** → Users → invite the service account email with the Developer role.
+3. Locally, save the key as `certs/google-sa.json`. For hosting:
+   ```bash
+   base64 -i service-account.json | pbcopy
+   ```
+   → `GOOGLE_WALLET_SA_KEY_B64`, plus `GOOGLE_WALLET_ISSUER_ID`.
 
-```bash
-base64 -i service-account.json | pbcopy
-```
-→ `GOOGLE_WALLET_SA_KEY_B64`, и `GOOGLE_WALLET_ISSUER_ID`.
+**Demo mode:** until Google approves publishing, cards are marked "TEST ONLY" and can be saved only by accounts added in the Wallet Console.
+When everything works: Wallet Console → **Request publishing access** (business details and screenshots of the flow are required).
 
-**Demo mode:** пока Google не одобрил выпуск, карты помечены «TEST ONLY» и сохраняются только у аккаунтов, добавленных в Wallet Console (Users / test accounts).
-Когда всё работает — Wallet Console → **Request publishing access** (нужны описание бизнеса и скриншоты процесса). Одобрение — от нескольких дней.
+**Check:** the startup log shows `Wallet: Google on`. On Android, open `/c/...` → "Add to Google Wallet".
 
-**Проверка:** в логе — `Wallet: Google on`. На Android откройте `/c/...` → «Pridať do Google Wallet».
+## 7. Post-deployment checklist (on real phones)
 
-## 7. Чек-лист после деплоя (на реальных телефонах)
+1. `https://your-domain/api/health` → `{"ok":true}`.
+2. Register a salon, create the program, upload a logo.
+3. Download the A4 poster, print it, scan it with an iPhone and an Android phone.
+4. Sign up as a client → add the card to Apple Wallet and Google Wallet.
+5. On a second phone, log in as staff (invite yourself with another email) → Scanner → scan the QR code in Wallet → **+1 stamp**.
+   Within seconds the card updates and a notification arrives.
+6. Set the cooldown to 0 hours, collect stamps up to the reward → reward notification → redeem.
+7. Set the next appointment two days ahead → the date appears on the card; the reminder arrives a day before.
+8. Delete the test client → the card in Wallet becomes void.
+9. Staff: Safari → Share → **Add to Home Screen** — the scanner opens like an app.
 
-1. `https://ваш-домен/api/health` → `{"ok":true}`.
-2. Зарегистрируйте салон, создайте программу, загрузите логотип.
-3. Скачайте постер A4, распечатайте, отсканируйте камерой iPhone и Android.
-4. Зарегистрируйтесь как клиентка → добавьте карту в Apple Wallet и в Google Wallet.
-5. На втором телефоне войдите как мастер (пригласите себя на другой email) → «Skener» → наведите камеру на QR в Wallet → **+1 pečiatka**.
-   Через несколько секунд карта в Wallet обновится и придёт уведомление «Pribudla pečiatka: 1 z 10…».
-6. Поставьте лимит 0 часов, доведите до награды → уведомление о награде → «Uplatniť odmenu».
-7. Назначьте следующий визит на «послезавтра» → дата появится на карте; напоминание придёт за сутки.
-8. Удалите тестовую клиентку → карта в Wallet станет недействительной.
-9. Мастер: «Добавить на главный экран» (Safari → Поделиться) — сканер открывается как приложение.
+## 8. Operations
 
-## 8. Эксплуатация
-
-- **Логи:** Railway → Deployments → View logs. Ошибки синхронизации Wallet помечены `[wallet]`.
-- **Бэкапы:** Neon PITR; раз в месяц проверяйте восстановление на копии.
-- **Новые миграции:** локально `pnpm --filter api db:migrate --name <имя>` → коммит → деплой применит сам.
-- **Юридическое:** текст согласия и страница `/j/<salon>/privacy` — шаблон. Перед запуском покажите юристу
-  и заключите с салонами договор об обработке данных (zmluva o spracúvaní osobných údajov, čl. 28 GDPR).
-  При изменении текста согласия увеличьте `CONSENT_VERSION` в `packages/shared/src/index.ts`.
-- **Кнопки Wallet:** перед публичным запуском замените текстовые кнопки на официальные бейджи
-  «Add to Apple Wallet» (Apple Marketing Guidelines) и «Add to Google Wallet» (Google brand guidelines) — этого требуют правила обеих платформ.
+- **Logs:** Railway → Deployments → View logs. Wallet sync errors are tagged `[wallet]`.
+- **Backups:** Neon point-in-time restore; test a restore on a copy once a month.
+- **New migrations:** locally `pnpm --filter api db:migrate --name <name>` → commit → the deployment applies them.
+- **Legal:** the consent text and the `/j/<salon>/privacy` page are templates — have them reviewed by a lawyer and sign a data processing agreement with each salon (Art. 28 GDPR). When the consent text changes, bump `CONSENT_VERSION` in `packages/shared/src/index.ts`.
+- **Wallet buttons:** before a public launch, replace the text buttons with the official "Add to Apple Wallet" and "Add to Google Wallet" badges, as both platforms' brand guidelines require.
