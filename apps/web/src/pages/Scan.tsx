@@ -3,10 +3,11 @@ import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import QrScanner from 'qr-scanner';
-import type { CustomerListResponse, StaffCardDto } from '@peciatka/shared';
+import type { CustomerListResponse, ProgramDto, StaffCardDto } from '@peciatka/shared';
 import { api, ApiError } from '../lib/api';
+import { useCurrentRole } from '../lib/auth';
 import { formatRelative } from '../lib/format';
-import { Alert, Button, Card, Input } from '../components/ui';
+import { Alert, Button, Card, Input, buttonClass } from '../components/ui';
 
 /** QR на карте — это случайный токен; ссылка (например, с постера) картой не является. */
 function looksLikeCardToken(value: string) {
@@ -33,6 +34,8 @@ export function ScanPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const query = useDebounced(q.trim(), 300);
+  const isOwner = useCurrentRole() === 'OWNER';
+  const program = useQuery({ queryKey: ['program'], queryFn: () => api.get<{ program: ProgramDto | null }>('/program') });
 
   useEffect(() => {
     const video = videoRef.current;
@@ -83,6 +86,18 @@ export function ScanPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">{t('scan.title')}</h1>
+
+      {program.data && !program.data.program && (
+        <Card className="space-y-3 border-brand-300 bg-brand-50">
+          <h2 className="text-lg font-semibold">{t('setup.title')}</h2>
+          <p className="text-sm text-stone-700">{t('setup.text')}</p>
+          {isOwner && (
+            <Link to="/program" className={buttonClass('primary', 'w-full')}>
+              {t('setup.cta')}
+            </Link>
+          )}
+        </Card>
+      )}
 
       <div className="relative overflow-hidden rounded-2xl bg-black">
         <video ref={videoRef} className="aspect-square w-full object-cover" muted playsInline />

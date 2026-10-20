@@ -51,6 +51,7 @@ export function StaffPage() {
   return (
     <div className="space-y-5">
       <h1 className="text-2xl font-bold">{t('staff.title')}</h1>
+      <p className="text-sm text-stone-600">{t('staff.hint')}</p>
 
       <Card className="space-y-4">
         <h2 className="font-semibold">{t('staff.invite_title')}</h2>

@@ -21,7 +21,7 @@
   },
   "nav": {
     "dashboard": "Prehľad",
-    "staff": "Tím",
+    "staff": "Personál",
     "settings": "Nastavenia",
     "scan": "Skener",
     "customers": "Klienti",
@@ -31,7 +31,7 @@
   },
   "roles": {
     "OWNER": "Majiteľ",
-    "STAFF": "Majster"
+    "STAFF": "Personál"
   },
   "auth": {
     "login_title": "Prihlásenie",
@@ -73,8 +73,8 @@
     "setup": "Nastavenie"
   },
   "staff": {
-    "title": "Tím",
-    "invite_title": "Pozvať majstra",
+    "title": "Personál",
+    "invite_title": "Pridať kolegu",
     "invite_submit": "Poslať pozvánku",
     "invite_sent": "Pozvánka bola odoslaná. Odkaz môžete poslať aj cez WhatsApp:",
     "members": "Členovia",
@@ -85,7 +85,8 @@
     "you": "vy",
     "revoke": "Zrušiť",
     "role": "Rola",
-    "expires": "platí do {{date}}"
+    "expires": "platí do {{date}}",
+    "hint": "Ak pečiatky dáva viac ľudí (napr. administrátori na zmeny), každý môže mať vlastné prihlásenie. Ak je pri pokladni jedno zariadenie, stačí váš účet."
   },
   "settings": {
     "title": "Nastavenia salónu",
@@ -94,7 +95,8 @@
     "phone": "Telefón",
     "default_locale": "Jazyk kariet a e-mailov",
     "public_link": "Verejná adresa salónu",
-    "profile": "Môj profil"
+    "profile": "Môj profil",
+    "salon": "Salón"
   },
   "v": {
     "email": "Zadajte platný e-mail",
@@ -161,7 +163,9 @@
     "logo_hint": "PNG alebo JPG, ideálne s priehľadným pozadím. Max. 5 MB.",
     "preview": "Náhľad karty",
     "create_first": "Najprv uložte program, potom nahrajte logo.",
-    "resync_note": "Zmeny dizajnu sa prejavia aj na kartách, ktoré už klienti majú v mobile."
+    "resync_note": "Zmeny dizajnu sa prejavia aj na kartách, ktoré už klienti majú v mobile.",
+    "more_colors": "Vlastné farby",
+    "advanced": "Pokročilé nastavenia"
   },
   "poster": {
     "title": "QR plagát na pult",
@@ -169,7 +173,9 @@
     "a4": "Plagát A4 (PDF)",
     "a5": "Plagát A5 (PDF)",
     "qr_png": "QR kód (PNG)",
-    "open_public": "Otvoriť stránku pre klientov"
+    "open_public": "Otvoriť stránku pre klientov",
+    "download": "Stiahnuť plagát (PDF)",
+    "more_formats": "Iné formáty"
   },
   "card": {
     "stamps": "Pečiatky",
@@ -218,8 +224,8 @@
     "title": "Skener",
     "hint": "Namierte fotoaparát na QR kód na karte klienta.",
     "camera_error": "Fotoaparát sa nepodarilo spustiť. Povoľte prístup ku kamere alebo vyhľadajte klienta nižšie.",
-    "manual": "Alebo vyhľadajte klienta",
-    "search_placeholder": "Meno alebo telefón",
+    "manual": "Vyhľadať klienta",
+    "search_placeholder": "Meno alebo koniec čísla",
     "not_card": "Toto nie je vernostná karta.",
     "scanning": "Hľadám kartu…",
     "start": "Spustiť kameru"
@@ -266,7 +272,8 @@
     "sort_visits": "Najviac návštev",
     "sort_new": "Noví",
     "sort_name": "Podľa mena",
-    "more": "Načítať ďalšie"
+    "more": "Načítať ďalšie",
+    "gdpr": "Údaje klienta (GDPR)"
   },
   "stats": {
     "title": "Prehľad",
@@ -284,7 +291,9 @@
     "daily_title": "Návštevy po dňoch",
     "table": "Tabuľka",
     "chart": "Graf",
-    "date": "Dátum"
+    "date": "Dátum",
+    "month_visits": "Návštevy (30 dní)",
+    "month_returning": "Vrátili sa (30 dní)"
   },
   "audit": {
     "title": "Denník akcií",
@@ -309,5 +318,18 @@
       "appointment.set": "Termín nastavený",
       "appointment.cancel": "Termín zrušený"
     }
+  },
+  "counter": {
+    "back_in": "Späť na skener o {{s}} s",
+    "stay": "Zostať tu",
+    "next": "Skenovať ďalšiu",
+    "reward_title": "🎁 Odmena pripravená",
+    "redeem_now": "Uplatniť odmenu",
+    "more": "Viac"
+  },
+  "setup": {
+    "title": "Nastavte vernostnú kartu",
+    "text": "Pred prvou pečiatkou nastavte odmenu, počet pečiatok a farbu karty. Trvá to minútu.",
+    "cta": "Nastaviť kartu"
   }
 }

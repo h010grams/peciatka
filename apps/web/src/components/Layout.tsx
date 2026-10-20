@@ -21,11 +21,11 @@ export function AppLayout() {
   if (isLoading) return <Spinner />;
   if (!me) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
 
+  // Касса: сканер — главный экран. Владельцу ещё клиенты и настройки.
   const nav = [
-    ...(role === 'OWNER' ? [{ to: '/', label: t('nav.dashboard'), icon: '◎' }] : []),
-    { to: '/scan', label: t('nav.scan'), icon: '⌖' },
+    { to: '/', label: t('nav.scan'), icon: '⌖' },
     { to: '/customers', label: t('nav.customers'), icon: '☺' },
-    { to: '/settings', label: t('nav.more'), icon: '⋯' },
+    ...(role === 'OWNER' ? [{ to: '/settings', label: t('nav.settings'), icon: '⚙' }] : []),
   ];
 
   async function switchSalon(salonId: string) {

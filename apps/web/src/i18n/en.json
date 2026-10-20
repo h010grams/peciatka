@@ -21,7 +21,7 @@
   },
   "nav": {
     "dashboard": "Overview",
-    "staff": "Team",
+    "staff": "Staff",
     "settings": "Settings",
     "scan": "Scanner",
     "customers": "Customers",
@@ -73,8 +73,8 @@
     "setup": "Setup"
   },
   "staff": {
-    "title": "Team",
-    "invite_title": "Invite a staff member",
+    "title": "Staff",
+    "invite_title": "Add a colleague",
     "invite_submit": "Send invitation",
     "invite_sent": "Invitation sent. You can also share the link via WhatsApp:",
     "members": "Members",
@@ -85,7 +85,8 @@
     "you": "you",
     "revoke": "Revoke",
     "role": "Role",
-    "expires": "valid until {{date}}"
+    "expires": "valid until {{date}}",
+    "hint": "If several people add stamps (e.g. receptionists on shifts), each can have their own login. With one device at the counter, your account is enough."
   },
   "settings": {
     "title": "Salon settings",
@@ -94,7 +95,8 @@
     "phone": "Phone",
     "default_locale": "Language for cards and emails",
     "public_link": "Public salon address",
-    "profile": "My profile"
+    "profile": "My profile",
+    "salon": "Salon"
   },
   "v": {
     "email": "Enter a valid email",
@@ -161,7 +163,9 @@
     "logo_hint": "PNG or JPG, ideally with a transparent background. Max 5 MB.",
     "preview": "Card preview",
     "create_first": "Save the program first, then upload the logo.",
-    "resync_note": "Design changes also update cards your clients already have."
+    "resync_note": "Design changes also update cards your clients already have.",
+    "more_colors": "Custom colors",
+    "advanced": "Advanced settings"
   },
   "poster": {
     "title": "QR poster for the counter",
@@ -169,7 +173,9 @@
     "a4": "A4 poster (PDF)",
     "a5": "A5 poster (PDF)",
     "qr_png": "QR code (PNG)",
-    "open_public": "Open the client page"
+    "open_public": "Open the client page",
+    "download": "Download poster (PDF)",
+    "more_formats": "Other formats"
   },
   "card": {
     "stamps": "Stamps",
@@ -218,8 +224,8 @@
     "title": "Scanner",
     "hint": "Point the camera at the QR code on the client's card.",
     "camera_error": "Couldn't start the camera. Allow camera access or search for the client below.",
-    "manual": "Or search for a client",
-    "search_placeholder": "Name or phone",
+    "manual": "Find a client",
+    "search_placeholder": "Name or last digits",
     "not_card": "This is not a loyalty card.",
     "scanning": "Looking up the card…",
     "start": "Start camera"
@@ -266,7 +272,8 @@
     "sort_visits": "Most visits",
     "sort_new": "Newest",
     "sort_name": "By name",
-    "more": "Load more"
+    "more": "Load more",
+    "gdpr": "Client data (GDPR)"
   },
   "stats": {
     "title": "Overview",
@@ -284,7 +291,9 @@
     "daily_title": "Visits per day",
     "table": "Table",
     "chart": "Chart",
-    "date": "Date"
+    "date": "Date",
+    "month_visits": "Visits (30 days)",
+    "month_returning": "Came back (30 days)"
   },
   "audit": {
     "title": "Activity log",
@@ -309,5 +318,18 @@
       "appointment.set": "Appointment set",
       "appointment.cancel": "Appointment removed"
     }
+  },
+  "counter": {
+    "back_in": "Back to scanner in {{s}} s",
+    "stay": "Stay here",
+    "next": "Scan next",
+    "reward_title": "🎁 Reward ready",
+    "redeem_now": "Redeem reward",
+    "more": "More"
+  },
+  "setup": {
+    "title": "Set up your loyalty card",
+    "text": "Before the first stamp, set the reward, number of stamps and card color. It takes a minute.",
+    "cta": "Set up the card"
   }
 }

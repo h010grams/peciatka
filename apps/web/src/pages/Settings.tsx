@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { LOCALES, updateSalonSchema, type SalonDto } from '@peciatka/shared';
+import { LOCALES, updateSalonSchema, type SalonDto, type StaffResponse } from '@peciatka/shared';
 import { api } from '../lib/api';
 import { meKey, useCurrentRole, useMe } from '../lib/auth';
 import { Alert, Button, Card, ErrorAlert, Field, Input, Select, Spinner } from '../components/ui';
@@ -19,6 +19,9 @@ export function SettingsPage() {
   const isOwner = role === 'OWNER';
 
   const salon = useQuery({ queryKey: ['salon'], queryFn: () => api.get<SalonDto>('/salon') });
+  const staff = useQuery({ queryKey: ['staff'], queryFn: () => api.get<StaffResponse>('/staff'), enabled: isOwner });
+  // журнал нужен, только когда штампы ставит больше одного человека
+  const hasTeam = (staff.data?.members.length ?? 0) > 1;
   const form = useForm({ resolver: zodResolver(updateSalonSchema) });
 
   useEffect(() => {
@@ -43,16 +46,13 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-5">
+      <h1 className="text-2xl font-bold">{t('nav.settings')}</h1>
       <Card flush>
         <ul className="divide-y divide-stone-100">
           {[
             { to: '/program', label: t('nav.program') },
-            ...(isOwner
-              ? [
-                  { to: '/staff', label: t('nav.staff') },
-                  { to: '/audit', label: t('nav.audit') },
-                ]
-              : []),
+            ...(isOwner ? [{ to: '/staff', label: t('nav.staff') }] : []),
+            ...(isOwner && hasTeam ? [{ to: '/audit', label: t('nav.audit') }] : []),
           ].map((l) => (
             <li key={l.to}>
               <Link to={l.to} className="flex items-center justify-between px-5 py-4 font-medium">
@@ -63,7 +63,7 @@ export function SettingsPage() {
         </ul>
       </Card>
 
-      <h1 className="text-2xl font-bold">{t('settings.title')}</h1>
+      <h2 className="pt-2 text-lg font-semibold">{t('settings.salon')}</h2>
 
       <Card>
         <form className="space-y-4" onSubmit={form.handleSubmit((v) => save.mutate(v))} noValidate>

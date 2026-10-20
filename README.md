@@ -12,18 +12,19 @@ No app to install, no account for the client, setup in about 10 minutes for the 
 
 ## Features
 
-**Salon owner**
-- Loyalty program setup: number of stamps, reward, card colors and logo, with a live card preview
-- Printable QR poster (A4 / A5 PDF) for the counter
-- Dashboard: visits, new and returning clients, rewards, visits per day
-- Team management: invite staff by link, roles (owner / staff), deactivate access
-- Activity log of every staff action
-- GDPR tools: export all data of a client as JSON, delete (anonymize) a client
-
-**Staff**
-- QR scanner in the browser (installable PWA), with name/phone search as a fallback
-- Add a stamp, redeem a reward, undo a mistaken stamp within 24 hours
+**At the counter** — the main screen, built for a receptionist or the stylist at checkout
+- QR scanner opens first (installable PWA); search by name or the last digits of a phone number as a fallback
+- One big "+1 stamp" button; a ready reward is shown on top and redeemed with one tap
 - Set the client's next appointment — it appears on the card, with a reminder a day before
+- After a stamp the screen returns to the scanner automatically, ready for the next client
+- Undo a mistaken stamp within 24 hours
+
+**Salon owner**
+- Loyalty card setup in one screen: reward, number of stamps, color preset and logo, with a live card preview
+- Printable QR poster (PDF) for the counter
+- Clients list with three key numbers: total clients, visits and returning clients in the last 30 days
+- Optional staff logins (e.g. receptionists on shifts) with an activity log of every action
+- GDPR tools: export all data of a client as JSON, delete (anonymize) a client
 
 **Client**
 - Sign-up page: name, phone or email, explicit consent

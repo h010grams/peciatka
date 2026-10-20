@@ -1,13 +1,12 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createBrowserRouter, RouterProvider } from 'react-router';
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './index.css';
 import './lib/i18n';
 import { AppLayout, AuthLayout } from './components/Layout';
 import { ForgotPasswordPage, LoginPage, RegisterPage, ResetPasswordPage } from './pages/auth';
 import { AcceptInvitePage } from './pages/AcceptInvite';
-import { DashboardPage } from './pages/Dashboard';
 import { StaffPage } from './pages/Staff';
 import { SettingsPage } from './pages/Settings';
 import { ProgramPage } from './pages/Program';
@@ -34,11 +33,11 @@ const router = createBrowserRouter([
   {
     element: <AppLayout />,
     children: [
-      { path: '/', element: <DashboardPage /> },
+      { path: '/', element: <ScanPage /> },
       { path: '/staff', element: <StaffPage /> },
       { path: '/settings', element: <SettingsPage /> },
       { path: '/program', element: <ProgramPage /> },
-      { path: '/scan', element: <ScanPage /> },
+      { path: '/scan', element: <Navigate to="/" replace /> },
       { path: '/cards/:id', element: <StaffCardPage /> },
       { path: '/customers', element: <CustomersPage /> },
       { path: '/customers/:id', element: <CustomerDetailPage /> },

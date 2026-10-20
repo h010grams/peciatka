@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AuditItem, CustomerDetailDto, CustomerListResponse } from '@peciatka/shared';
+import type { AuditItem, CustomerDetailDto, CustomerListResponse, StatsDto } from '@peciatka/shared';
 import { api } from '../lib/api';
 import { useCurrentRole } from '../lib/auth';
 import { formatDateTime, formatDay, formatRelative } from '../lib/format';
@@ -32,19 +32,45 @@ export function CustomersPage() {
   });
   const items = list.data?.pages.flatMap((p) => p.items) ?? [];
   const total = list.data?.pages[0]?.total ?? 0;
+  const isOwner = useCurrentRole() === 'OWNER';
+  const stats = useQuery({
+    queryKey: ['stats', '30d'],
+    queryFn: () => api.get<StatsDto>('/stats?period=30d'),
+    enabled: isOwner,
+  });
 
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">{t('customers.title')}</h1>
+
+      {/* Три цифры, ради которых салон пользуется сервисом */}
+      {stats.data && (
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: t('stats.total_customers'), value: stats.data.totalCustomers },
+            { label: t('stats.month_visits'), value: stats.data.visits },
+            { label: t('stats.month_returning'), value: stats.data.returningCustomers },
+          ].map((s) => (
+            <Card key={s.label} className="p-3 text-center">
+              <p className="text-2xl font-bold tabular-nums">{s.value}</p>
+              <p className="text-xs leading-tight text-stone-500">{s.label}</p>
+            </Card>
+          ))}
+        </div>
+      )}
       <div className="flex gap-2">
-        <Input type="search" placeholder={t('scan.search_placeholder')} value={q} onChange={(e) => setQ(e.target.value)} />
-        <Select value={sort} onChange={(e) => setSort(e.target.value)} className="w-auto shrink-0" aria-label="sort">
+        <div className="min-w-0 flex-1">
+          <Input type="search" placeholder={t('scan.search_placeholder')} value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        <div className="w-36 shrink-0">
+        <Select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="sort">
           {(['recent', 'visits', 'new', 'name'] as const).map((s) => (
             <option key={s} value={s}>
               {t(`customers.sort_${s}`)}
             </option>
           ))}
         </Select>
+        </div>
       </div>
 
       {list.isLoading && <Spinner />}
@@ -153,7 +179,9 @@ export function CustomerDetailPage() {
       </div>
 
       {isOwner && (
-        <Card className="space-y-2">
+        <details className="rounded-2xl border border-stone-200 bg-white p-4 text-sm">
+          <summary className="cursor-pointer font-medium text-stone-600">{t('customers.gdpr')}</summary>
+          <div className="mt-3 space-y-2">
           <ErrorAlert error={del.error} />
           <a href={`/api/customers/${id}/export`} download className={buttonClass('secondary', 'w-full')}>{t('customers.export')}</a>
           <Button
@@ -164,7 +192,8 @@ export function CustomerDetailPage() {
           >
             {t('customers.delete')}
           </Button>
-        </Card>
+          </div>
+        </details>
       )}
     </div>
   );

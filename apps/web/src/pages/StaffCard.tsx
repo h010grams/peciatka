@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { StaffCardDto, StampResultDto } from '@peciatka/shared';
 import { api, ApiError } from '../lib/api';
 import { formatDateTime, formatRelative, toLocalInput } from '../lib/format';
-import { Alert, Button, Card, ErrorAlert, Input, Spinner, buttonClass } from '../components/ui';
+import { Button, Card, ErrorAlert, Input, Spinner, buttonClass } from '../components/ui';
 
 type Feedback = { kind: 'success' | 'error' | 'reward'; text: string } | null;
+
+/** После штампа касса сама возвращается к сканеру — следующая клиентка уже ждёт. */
+const AUTO_RETURN_SECONDS = 5;
 
 function Dots({ filled, total }: { filled: number; total: number }) {
   return (
@@ -31,9 +34,11 @@ function Dots({ filled, total }: { filled: number; total: number }) {
 export function StaffCardPage() {
   const { id = '' } = useParams();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [appt, setAppt] = useState('');
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   const key = ['staff-card', id];
   const card = useQuery({ queryKey: key, queryFn: () => api.get<StaffCardDto>(`/cards/${id}`) });
@@ -43,6 +48,18 @@ export function StaffCardPage() {
     setAppt(c?.nextAppointmentAt ? toLocalInput(c.nextAppointmentAt, c.timezone) : '');
   }, [c?.nextAppointmentAt, c?.timezone]);
 
+  // обратный отсчёт до возврата к сканеру
+  useEffect(() => {
+    if (countdown === null) return;
+    if (countdown <= 0) {
+      navigate('/');
+      return;
+    }
+    const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [countdown, navigate]);
+  const stay = () => setCountdown(null);
+
   const onError = (e: unknown) => {
     const err = e instanceof ApiError ? e : null;
     let text = t(`errors.${err?.code ?? 'internal'}`, { defaultValue: t('errors.internal') });
@@ -50,6 +67,7 @@ export function StaffCardPage() {
       text = t('staffcard.cooldown', { when: formatDateTime(err.details.retryAt, c?.timezone) });
     }
     setFeedback({ kind: 'error', text });
+    setCountdown(null);
     void card.refetch();
   };
   const update = (next: StaffCardDto) => {
@@ -67,6 +85,8 @@ export function StaffCardPage() {
           ? { kind: 'reward', text: t('staffcard.reward_earned') }
           : { kind: 'success', text: t('staffcard.stamp_added', { count: r.card.stampCount, n: r.card.stampsRequired }) },
       );
+      // если клиентка только что получила награду — не уходим, её можно сразу применить
+      setCountdown(r.rewardEarned ? null : AUTO_RETURN_SECONDS);
     },
     onError,
   });
@@ -75,6 +95,7 @@ export function StaffCardPage() {
     onSuccess: (r) => {
       update(r.card);
       setFeedback({ kind: 'success', text: t('staffcard.redeemed') });
+      setCountdown(AUTO_RETURN_SECONDS);
     },
     onError,
   });
@@ -83,6 +104,7 @@ export function StaffCardPage() {
     onSuccess: (r) => {
       update(r.card);
       setFeedback({ kind: 'success', text: t('staffcard.revoked') });
+      setCountdown(null);
     },
     onError,
   });
@@ -91,6 +113,7 @@ export function StaffCardPage() {
     onSuccess: (r) => {
       update(r.card);
       setFeedback({ kind: 'success', text: t('staffcard.appointment_saved') });
+      setCountdown(AUTO_RETURN_SECONDS);
     },
     onError,
   });
@@ -106,10 +129,11 @@ export function StaffCardPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">{c.customer.name}</h1>
+      <div className="text-center">
+        <h1 className="text-3xl font-bold">{c.customer.name}</h1>
         <p className="text-sm text-stone-500">
-          {[c.customer.phone, c.customer.email].filter(Boolean).join(' · ')}
+          {t('staffcard.visits', { count: c.totalVisits })}
+          {c.lastStampAt && ` · ${t('staffcard.last_visit', { when: formatRelative(c.lastStampAt) })}`}
         </p>
       </div>
 
@@ -125,6 +149,30 @@ export function StaffCardPage() {
           }`}
         >
           {feedback.text}
+          {countdown !== null && (
+            <div className="mt-2 flex items-center justify-center gap-3 text-sm font-normal">
+              <span>{t('counter.back_in', { s: countdown })}</span>
+              <button className="font-semibold underline" onClick={stay}>
+                {t('counter.stay')}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Награда — первое, что видит администратор: её применяют при оплате */}
+      {c.rewardsAvailable > 0 && (
+        <div className="space-y-3 rounded-2xl border-2 border-brand-300 bg-brand-50 p-4 text-center">
+          <p className="text-sm font-semibold uppercase tracking-wide text-brand-700">{t('counter.reward_title')}</p>
+          <p className="text-2xl font-bold">{c.rewardText}</p>
+          <Button
+            className="min-h-14 w-full text-lg"
+            loading={redeem.isPending}
+            disabled={busy}
+            onClick={() => window.confirm(t('staffcard.redeem_confirm', { reward: c.rewardText })) && redeem.mutate()}
+          >
+            {t('counter.redeem_now')}
+          </Button>
         </div>
       )}
 
@@ -134,12 +182,12 @@ export function StaffCardPage() {
           <span className="text-stone-400"> / {c.stampsRequired}</span>
         </p>
         <Dots filled={c.stampCount} total={c.stampsRequired} />
-        <p className="text-sm text-stone-500">
-          {t('staffcard.visits', { count: c.totalVisits })}
-          {c.lastStampAt && ` · ${t('staffcard.last_visit', { when: formatRelative(c.lastStampAt) })}`}
-        </p>
-
-        <Button className="min-h-16 w-full text-xl" loading={stamp.isPending} disabled={busy || !!c.nextStampAllowedAt} onClick={() => stamp.mutate()}>
+        <Button
+          className="min-h-16 w-full text-xl"
+          loading={stamp.isPending}
+          disabled={busy || !!c.nextStampAllowedAt}
+          onClick={() => stamp.mutate()}
+        >
           {t('staffcard.add_stamp')}
         </Button>
         {c.nextStampAllowedAt && (
@@ -147,56 +195,44 @@ export function StaffCardPage() {
             {t('staffcard.cooldown', { when: formatDateTime(c.nextStampAllowedAt, c.timezone) })}
           </p>
         )}
+      </Card>
 
-        {c.rewardsAvailable > 0 && (
-          <div className="space-y-2 rounded-xl bg-brand-50 p-3">
-            <p className="font-semibold text-brand-700">
-              🎁 {c.rewardText} · {t('staffcard.rewards_available', { count: c.rewardsAvailable })}
-            </p>
-            <Button
-              variant="secondary"
-              className="w-full"
-              loading={redeem.isPending}
-              disabled={busy}
-              onClick={() => window.confirm(t('staffcard.redeem_confirm', { reward: c.rewardText })) && redeem.mutate()}
-            >
-              {t('staffcard.redeem')}
+      {/* Любое касание блока записи останавливает автовозврат */}
+      <Card className="space-y-3" >
+        <div onFocusCapture={stay} onPointerDownCapture={stay} className="space-y-3">
+          <h2 className="font-semibold">{t('staffcard.appointment')}</h2>
+          {c.nextAppointmentAt && (
+            <p className="rounded-xl bg-stone-100 px-4 py-3 text-sm">{formatDateTime(c.nextAppointmentAt, c.timezone)}</p>
+          )}
+          <Input type="datetime-local" value={appt} onChange={(e) => setAppt(e.target.value)} />
+          <div className="flex gap-2">
+            <Button variant="secondary" className="flex-1" disabled={!appt} loading={saveAppt.isPending} onClick={() => saveAppt.mutate()}>
+              {t('staffcard.appointment_save')}
             </Button>
+            {c.nextAppointmentAt && (
+              <Button variant="danger" loading={removeAppt.isPending} onClick={() => removeAppt.mutate()}>
+                {t('staffcard.appointment_remove')}
+              </Button>
+            )}
           </div>
-        )}
+        </div>
+      </Card>
 
+      <Link to="/" className={buttonClass('secondary', 'w-full')}>
+        {t('counter.next')}
+      </Link>
+
+      <div className="flex justify-center gap-5 pb-2 text-sm text-stone-500">
         {c.revocable && (
-          <Button
-            variant="danger"
-            className="w-full"
-            loading={revoke.isPending}
+          <button
+            className="underline disabled:opacity-50"
             disabled={busy}
             onClick={() => window.confirm(t('staffcard.revoke_confirm')) && revoke.mutate()}
           >
             {t('staffcard.revoke')}
-          </Button>
+          </button>
         )}
-      </Card>
-
-      <Card className="space-y-3">
-        <h2 className="font-semibold">{t('staffcard.appointment')}</h2>
-        {c.nextAppointmentAt && <Alert kind="info">{formatDateTime(c.nextAppointmentAt, c.timezone)}</Alert>}
-        <Input type="datetime-local" value={appt} onChange={(e) => setAppt(e.target.value)} />
-        <div className="flex gap-2">
-          <Button variant="secondary" className="flex-1" disabled={!appt} loading={saveAppt.isPending} onClick={() => saveAppt.mutate()}>
-            {t('staffcard.appointment_save')}
-          </Button>
-          {c.nextAppointmentAt && (
-            <Button variant="danger" loading={removeAppt.isPending} onClick={() => removeAppt.mutate()}>
-              {t('staffcard.appointment_remove')}
-            </Button>
-          )}
-        </div>
-      </Card>
-
-      <div className="grid gap-2">
-        <Link to="/scan" className={buttonClass('secondary', 'w-full')}>{t('staffcard.scan_next')}</Link>
-        <Link to={`/customers/${c.customer.id}`} className="py-2 text-center text-sm underline">
+        <Link to={`/customers/${c.customer.id}`} className="underline">
           {t('staffcard.customer_detail')}
         </Link>
       </div>

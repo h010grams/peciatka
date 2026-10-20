@@ -79,20 +79,11 @@ export function ProgramPage() {
           <fieldset disabled={!isOwner} className="space-y-4">
             <ErrorAlert error={save.error} />
             {save.isSuccess && !form.formState.isDirty && <Alert kind="success">{t('common.saved')}</Alert>}
-            <Field label={t('program.name')} error={errors.name?.message}>
-              <Input {...form.register('name')} />
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label={t('program.stamps_required')} error={errors.stampsRequired?.message}>
-                <Input type="number" inputMode="numeric" min={2} max={30} {...form.register('stampsRequired')} />
-              </Field>
-              <Field label={t('program.cooldown')} error={errors.cooldownHours?.message}>
-                <Input type="number" inputMode="numeric" min={0} max={168} {...form.register('cooldownHours')} />
-              </Field>
-            </div>
-            <p className="-mt-2 text-xs text-stone-500">{t('program.cooldown_hint')}</p>
             <Field label={t('program.reward_text')} error={errors.rewardText?.message}>
               <Input placeholder={t('program.reward_placeholder')} {...form.register('rewardText')} />
+            </Field>
+            <Field label={t('program.stamps_required')} error={errors.stampsRequired?.message}>
+              <Input type="number" inputMode="numeric" min={2} max={30} {...form.register('stampsRequired')} />
             </Field>
 
             <div className="space-y-2">
@@ -115,7 +106,9 @@ export function ProgramPage() {
                   </button>
                 ))}
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <details className="pt-1">
+                <summary className="cursor-pointer text-sm text-stone-500">{t('program.more_colors')}</summary>
+              <div className="mt-3 grid grid-cols-3 gap-3">
                 {(['bgColor', 'fgColor', 'labelColor'] as const).map((k) => (
                   <label key={k} className="space-y-1 text-xs text-stone-600">
                     <span>{t(`program.${k === 'bgColor' ? 'bg' : k === 'fgColor' ? 'fg' : 'label'}`)}</span>
@@ -130,7 +123,21 @@ export function ProgramPage() {
                   </label>
                 ))}
               </div>
+              </details>
             </div>
+
+            <details>
+              <summary className="cursor-pointer text-sm text-stone-500">{t('program.advanced')}</summary>
+              <div className="mt-3 space-y-4">
+                <Field label={t('program.name')} error={errors.name?.message}>
+                  <Input {...form.register('name')} />
+                </Field>
+                <Field label={t('program.cooldown')} error={errors.cooldownHours?.message}>
+                  <Input type="number" inputMode="numeric" min={0} max={168} {...form.register('cooldownHours')} />
+                </Field>
+                <p className="-mt-2 text-xs text-stone-500">{t('program.cooldown_hint')}</p>
+              </div>
+            </details>
 
             {isOwner && (
               <Button type="submit" className="w-full" loading={save.isPending}>
@@ -187,11 +194,14 @@ export function ProgramPage() {
           <h2 className="font-semibold">{t('poster.title')}</h2>
           <p className="text-sm text-stone-600">{t('poster.text')}</p>
           <div className="grid gap-2">
-            <a href={`/api/poster/poster.pdf?size=a4&lang=${lang}`} target="_blank" rel="noreferrer" className={buttonClass('primary', 'w-full')}>{t('poster.a4')}</a>
-            <div className="grid grid-cols-2 gap-2">
-              <a href={`/api/poster/poster.pdf?size=a5&lang=${lang}`} target="_blank" rel="noreferrer" className={buttonClass('secondary', 'w-full')}>{t('poster.a5')}</a>
-              <a href="/api/poster/qr.png" download className={buttonClass('secondary', 'w-full')}>{t('poster.qr_png')}</a>
-            </div>
+            <a href={`/api/poster/poster.pdf?size=a4&lang=${lang}`} target="_blank" rel="noreferrer" className={buttonClass('primary', 'w-full')}>{t('poster.download')}</a>
+            <details>
+              <summary className="cursor-pointer text-center text-sm text-stone-500">{t('poster.more_formats')}</summary>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <a href={`/api/poster/poster.pdf?size=a5&lang=${lang}`} target="_blank" rel="noreferrer" className={buttonClass('secondary', 'w-full')}>{t('poster.a5')}</a>
+                <a href="/api/poster/qr.png" download className={buttonClass('secondary', 'w-full')}>{t('poster.qr_png')}</a>
+              </div>
+            </details>
             <a href={`/j/${salon.data.slug}`} target="_blank" rel="noreferrer" className="pt-1 text-center text-sm underline">
               {t('poster.open_public')}
             </a>
