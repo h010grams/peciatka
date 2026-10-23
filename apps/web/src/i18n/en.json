@@ -165,7 +165,9 @@
     "create_first": "Save the program first, then upload the logo.",
     "resync_note": "Design changes also update cards your clients already have.",
     "more_colors": "Custom colors",
-    "advanced": "Advanced settings"
+    "advanced": "Advanced settings",
+    "first_stamp": "First stamp on sign-up",
+    "first_stamp_hint": "A new client sees 1 stamp right away instead of an empty card."
   },
   "poster": {
     "title": "QR poster for the counter",
@@ -325,11 +327,28 @@
     "next": "Scan next",
     "reward_title": "🎁 Reward ready",
     "redeem_now": "Redeem reward",
-    "more": "More"
+    "more": "More",
+    "new_customer": "+ New client"
   },
   "setup": {
     "title": "Set up your loyalty card",
     "text": "Before the first stamp, set the reward, number of stamps and card color. It takes a minute.",
     "cta": "Set up the card"
+  },
+  "newcust": {
+    "title": "New client",
+    "text": "Enter a name and phone number. The card is created right away and the client adds it to her phone by scanning a QR code.",
+    "language": "Card language",
+    "consent": "The client agrees to the processing of her name and contact for the loyalty program.",
+    "submit": "Create card",
+    "created_stamp": "Card created with the first stamp 🎉",
+    "created": "Card created",
+    "existing": "This client already has a card — we opened it."
+  },
+  "walletqr": {
+    "title": "Card to the phone",
+    "text": "Let the client scan this QR code with her camera. Her card opens with an Apple Wallet / Google Wallet button.",
+    "show": "Show QR to add the card",
+    "done": "Done"
   }
 }

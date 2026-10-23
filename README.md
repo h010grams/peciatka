@@ -14,6 +14,7 @@ No app to install, no account for the client, setup in about 10 minutes for the 
 
 **At the counter** — the main screen, built for a receptionist or the stylist at checkout
 - QR scanner opens first (installable PWA); search by name or the last digits of a phone number as a fallback
+- Register a new client right at the counter in ~20 seconds: name and phone, the first stamp is added, and a QR code on screen lets the client add the card to her phone
 - One big "+1 stamp" button; a ready reward is shown on top and redeemed with one tap
 - Set the client's next appointment — it appears on the card, with a reminder a day before
 - After a stamp the screen returns to the scanner automatically, ready for the next client
@@ -83,7 +84,7 @@ Each event (stamp, reward, reminder) produces exactly **one** notification: thro
 
 ## Tests
 
-85 automated tests (Vitest):
+94 automated tests (Vitest):
 - unit tests for the stamping rules,
 - integration tests against a real PostgreSQL database: authentication, tenant isolation, roles, invitations, stamping, cooldown, concurrent scans, rewards, undo, reminders, customer search, GDPR export/deletion, statistics,
 - Wallet tests with self-signed certificates and mocked network calls: `.pkpass` contents and signature, the full PassKit Web Service flow, APNs token cleanup, retries, Google JWT signature and object updates.

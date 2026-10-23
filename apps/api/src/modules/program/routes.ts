@@ -18,6 +18,7 @@ export function toProgramDto(p: LoyaltyProgram): ProgramDto {
     stampsRequired: p.stampsRequired,
     rewardText: p.rewardText,
     cooldownHours: p.cooldownHours,
+    firstStampOnJoin: p.firstStampOnJoin,
     bgColor: p.bgColor,
     fgColor: p.fgColor,
     labelColor: p.labelColor,

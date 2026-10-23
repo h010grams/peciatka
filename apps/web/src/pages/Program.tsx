@@ -14,6 +14,7 @@ const DEFAULTS = {
   stampsRequired: 10,
   rewardText: '',
   cooldownHours: 12,
+  firstStampOnJoin: true,
   bgColor: '#1C1917',
   fgColor: '#FFFFFF',
   labelColor: '#E7B9A8',
@@ -136,6 +137,13 @@ export function ProgramPage() {
                   <Input type="number" inputMode="numeric" min={0} max={168} {...form.register('cooldownHours')} />
                 </Field>
                 <p className="-mt-2 text-xs text-stone-500">{t('program.cooldown_hint')}</p>
+                <label className="flex gap-3 text-sm">
+                  <input type="checkbox" className="mt-0.5 size-5 shrink-0 accent-stone-900" {...form.register('firstStampOnJoin')} />
+                  <span>
+                    <span className="font-medium">{t('program.first_stamp')}</span>
+                    <span className="block text-xs text-stone-500">{t('program.first_stamp_hint')}</span>
+                  </span>
+                </label>
               </div>
             </details>
 

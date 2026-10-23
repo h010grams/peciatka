@@ -88,7 +88,7 @@ async function history(cardIds: string[]): Promise<HistoryItem[]> {
     prisma.reward.findMany({ where: { cardId: { in: cardIds } }, orderBy: { earnedAt: 'desc' }, take: 50 }),
   ]);
   const userIds = [
-    ...new Set([...events.map((e) => e.actorUserId), ...rewards.map((r) => r.redeemedByUserId).filter((x): x is string => !!x)]),
+    ...new Set([...events.map((e) => e.actorUserId), ...rewards.map((r) => r.redeemedByUserId)].filter((x): x is string => !!x)),
   ];
   const users = await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true } });
   const nameOf = (id: string | null) => (id ? (users.find((u) => u.id === id)?.name ?? null) : null);

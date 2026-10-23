@@ -1,11 +1,14 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { fromZonedTime } from 'date-fns-tz';
-import { appointmentSchema, type StampResultDto } from '@peciatka/shared';
+import QRCode from 'qrcode';
+import { appointmentSchema, joinSchema, type CounterRegisterResponse, type StampResultDto } from '@peciatka/shared';
 import { assertUuid, badRequest, notFound } from '../../lib/errors.js';
 import { prisma } from '../../lib/prisma.js';
 import { parse } from '../../lib/validate.js';
 import { requireTenant } from '../../plugins/auth.js';
 import * as cards from '../../services/cards.js';
+import { registerCustomer } from '../../services/registration.js';
+import { urls } from '../../services/urls.js';
 
 type IdParams = { Params: { id: string } };
 
@@ -20,6 +23,25 @@ export const cardRoutes: FastifyPluginAsync = async (app) => {
     if (!/^[\w-]{10,64}$/.test(token)) throw notFound('card_not_found');
     const id = await cards.findCardIdByQr(req.tenant!.salonId, token);
     return cards.getStaffCard(req.tenant!.salonId, id);
+  });
+
+  // Регистрация клиентки на кассе: администратор вводит имя и телефон, клиентка соглашается устно
+  app.post('/register', actionLimit, async (req, reply): Promise<CounterRegisterResponse> => {
+    const input = parse(joinSchema, req.body);
+    const r = await registerCustomer(req.tenant!.salonId, input, { actorUserId: req.auth!.user.id, source: 'counter' });
+    reply.code(r.created ? 201 : 200);
+    return { cardId: r.cardId, created: r.created, firstStamp: r.firstStamp };
+  });
+
+  // QR со ссылкой на карту клиентки: она сканирует его своим телефоном и добавляет карту в Wallet
+  app.get<IdParams>('/:id/wallet-qr.svg', member, async (req, reply) => {
+    const card = await prisma.card.findFirst({
+      where: { id: assertUuid(req.params.id, 'card_not_found'), salonId: req.tenant!.salonId, status: 'ACTIVE' },
+      select: { serialNumber: true },
+    });
+    if (!card) throw notFound('card_not_found');
+    const svg = await QRCode.toString(urls.cardPage(card.serialNumber), { type: 'svg', margin: 1, errorCorrectionLevel: 'M' });
+    return reply.header('Content-Type', 'image/svg+xml').header('Cache-Control', 'private, no-store').send(svg);
   });
 
   app.get<IdParams>('/:id', member, async (req) => {

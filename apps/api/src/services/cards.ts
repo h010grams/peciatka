@@ -99,7 +99,8 @@ export async function findCardIdByQr(salonId: string, qrToken: string): Promise<
   return card.id;
 }
 
-export async function addStamp(salonId: string, cardId: string, actorUserId: string, now = new Date()) {
+/** actorUserId = null — штамп ставит система (первый штамп при самостоятельной регистрации). */
+export async function addStamp(salonId: string, cardId: string, actorUserId: string | null, now = new Date()) {
   const result = await prisma.$transaction(async (tx) => {
     const card = await lockCard(tx, salonId, cardId);
     const { program, customer } = card;

@@ -151,6 +151,7 @@ model LoyaltyProgram {
   stampsRequired Int // N
   rewardText     String
   cooldownHours  Int     @default(12) // не больше 1 штампа за N часов
+  firstStampOnJoin Boolean @default(true) // новая карта сразу получает первый штамп
   isActive       Boolean @default(true)
 
   bgColor      String  @default("#1F1F1F")
@@ -239,7 +240,7 @@ model StampEvent {
   salonId        String    @db.Uuid
   cardId         String    @db.Uuid
   type           StampType
-  actorUserId    String    @db.Uuid
+  actorUserId    String?   @db.Uuid // null — штамп поставила система (первый штамп при самостоятельной регистрации)
   revokesEventId String?   @unique @db.Uuid
   createdAt      DateTime  @default(now()) @db.Timestamptz
 

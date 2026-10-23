@@ -1,27 +1,17 @@
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
-import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import QRCode from 'qrcode';
-import { CONSENT_VERSION, joinSchema, type PublicCardDto, type PublicSalonDto } from '@peciatka/shared';
-import { audit } from '../../lib/audit.js';
-import { randomToken } from '../../lib/crypto.js';
-import { assertUuid, badRequest, notFound } from '../../lib/errors.js';
+import { joinSchema, type PublicCardDto, type PublicSalonDto } from '@peciatka/shared';
+import { assertUuid, notFound } from '../../lib/errors.js';
 import { prisma } from '../../lib/prisma.js';
 import { parse } from '../../lib/validate.js';
 import { squareLogo, stripPng } from '../../services/images.js';
+import { registerCustomer } from '../../services/registration.js';
 import * as apple from '../../services/wallet/apple.js';
 import * as google from '../../services/wallet/google.js';
 import { loadWalletCard, type WalletCard } from '../../services/walletCard.js';
 import { toProgramDto } from '../program/routes.js';
 
 const IMMUTABLE = 'public, max-age=31536000, immutable';
-
-/** Телефон в E.164; по умолчанию считаем номер словацким (0905… → +421905…). */
-export function normalizePhone(raw: string): string | null {
-  if (!raw) return null;
-  const p = parsePhoneNumberFromString(raw, 'SK');
-  if (!p || !p.isValid()) throw badRequest('phone_invalid');
-  return p.number;
-}
 
 export function toPublicCard(card: WalletCard): PublicCardDto {
   const program = toProgramDto(card.program);
@@ -69,7 +59,7 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
     const p = salon.programs.find((x) => x.isActive);
     let program: PublicSalonDto['program'] = null;
     if (p) {
-      const { id: _id, cooldownHours: _c, ...rest } = toProgramDto(p);
+      const { id: _id, cooldownHours: _c, firstStampOnJoin: _f, ...rest } = toProgramDto(p);
       program = rest;
     }
     return { name: salon.name, slug: salon.slug, address: salon.address, phone: salon.phone, program };
@@ -77,77 +67,10 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
 
   app.post<{ Params: { slug: string } }>('/salons/:slug/join', { config: joinLimit }, async (req, reply) => {
     const input = parse(joinSchema, req.body);
-    const salon = await prisma.salon.findUnique({ where: { slug: req.params.slug }, include: { programs: true } });
+    const salon = await prisma.salon.findUnique({ where: { slug: req.params.slug }, select: { id: true } });
     if (!salon) throw notFound('salon_not_found');
-    const program = salon.programs.find((x) => x.isActive);
-    if (!program) throw notFound('program_missing');
-
-    const phone = normalizePhone(input.phone);
-    const email = input.email || null;
-
-    const card = await prisma.$transaction(async (tx) => {
-      // Та же клиентка (по телефону, затем по email) получает ту же карту — например, после смены телефона.
-      const existing =
-        (phone && (await tx.customer.findUnique({ where: { salonId_phoneE164: { salonId: salon.id, phoneE164: phone } } }))) ||
-        (email && (await tx.customer.findUnique({ where: { salonId_email: { salonId: salon.id, email } } }))) ||
-        null;
-
-      let customerId: string;
-      if (existing) {
-        customerId = existing.id;
-        // дополняем недостающий контакт, если он не занят другой клиенткой
-        const addPhone = phone && !existing.phoneE164
-          ? !(await tx.customer.findUnique({ where: { salonId_phoneE164: { salonId: salon.id, phoneE164: phone } } }))
-          : false;
-        const addEmail = email && !existing.email
-          ? !(await tx.customer.findUnique({ where: { salonId_email: { salonId: salon.id, email } } }))
-          : false;
-        await tx.customer.update({
-          where: { id: existing.id },
-          data: {
-            consentAt: new Date(),
-            consentVersion: CONSENT_VERSION,
-            locale: input.locale,
-            ...(addPhone ? { phoneE164: phone } : {}),
-            ...(addEmail ? { email } : {}),
-          },
-        });
-      } else {
-        const created = await tx.customer.create({
-          data: {
-            salonId: salon.id,
-            name: input.name,
-            phoneE164: phone,
-            email,
-            locale: input.locale,
-            consentAt: new Date(),
-            consentVersion: CONSENT_VERSION,
-          },
-        });
-        customerId = created.id;
-        await audit(tx, {
-          salonId: salon.id,
-          actorUserId: null,
-          action: 'customer.join',
-          entityType: 'customer',
-          entityId: customerId,
-        });
-      }
-
-      return tx.card.upsert({
-        where: { customerId_programId: { customerId, programId: program.id } },
-        create: {
-          salonId: salon.id,
-          programId: program.id,
-          customerId,
-          qrToken: randomToken(18),
-          appleAuthToken: randomToken(24),
-        },
-        update: {},
-      });
-    });
-
-    return reply.code(201).send({ serial: card.serialNumber });
+    const { serial } = await registerCustomer(salon.id, input, { actorUserId: null, source: 'poster' });
+    return reply.code(201).send({ serial });
   });
 
   // ───────── Карта клиентки ─────────

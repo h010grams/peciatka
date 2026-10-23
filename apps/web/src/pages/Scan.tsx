@@ -119,6 +119,10 @@ export function ScanPage() {
       </div>
       {state !== 'error' && <p className="text-center text-sm text-stone-500">{t('scan.hint')}</p>}
 
+      <Link to="/new-customer" className={buttonClass('secondary', 'w-full min-h-12 text-base')}>
+        {t('counter.new_customer')}
+      </Link>
+
       <Card className="space-y-3">
         <h2 className="font-semibold">{t('scan.manual')}</h2>
         <Input

@@ -165,7 +165,9 @@
     "create_first": "Najprv uložte program, potom nahrajte logo.",
     "resync_note": "Zmeny dizajnu sa prejavia aj na kartách, ktoré už klienti majú v mobile.",
     "more_colors": "Vlastné farby",
-    "advanced": "Pokročilé nastavenia"
+    "advanced": "Pokročilé nastavenia",
+    "first_stamp": "Prvá pečiatka pri registrácii",
+    "first_stamp_hint": "Nová klientka hneď vidí 1 pečiatku namiesto prázdnej karty."
   },
   "poster": {
     "title": "QR plagát na pult",
@@ -325,11 +327,28 @@
     "next": "Skenovať ďalšiu",
     "reward_title": "🎁 Odmena pripravená",
     "redeem_now": "Uplatniť odmenu",
-    "more": "Viac"
+    "more": "Viac",
+    "new_customer": "+ Nová klientka"
   },
   "setup": {
     "title": "Nastavte vernostnú kartu",
     "text": "Pred prvou pečiatkou nastavte odmenu, počet pečiatok a farbu karty. Trvá to minútu.",
     "cta": "Nastaviť kartu"
+  },
+  "newcust": {
+    "title": "Nová klientka",
+    "text": "Zadajte meno a telefón. Karta sa vytvorí hneď a klientka si ju pridá do mobilu naskenovaním QR kódu.",
+    "language": "Jazyk karty",
+    "consent": "Klientka súhlasí so spracovaním mena a kontaktu na účely vernostného programu.",
+    "submit": "Vytvoriť kartu",
+    "created_stamp": "Karta vytvorená s prvou pečiatkou 🎉",
+    "created": "Karta vytvorená",
+    "existing": "Klientka už kartu má – otvorili sme ju."
+  },
+  "walletqr": {
+    "title": "Karta do mobilu",
+    "text": "Nech klientka naskenuje tento QR kód fotoaparátom. Otvorí sa jej karta s tlačidlom Apple Wallet / Google Wallet.",
+    "show": "Zobraziť QR na pridanie karty",
+    "done": "Hotovo"
   }
 }

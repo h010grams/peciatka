@@ -11,6 +11,7 @@ import { StaffPage } from './pages/Staff';
 import { SettingsPage } from './pages/Settings';
 import { ProgramPage } from './pages/Program';
 import { ScanPage } from './pages/Scan';
+import { NewCustomerPage } from './pages/NewCustomer';
 import { StaffCardPage } from './pages/StaffCard';
 import { AuditPage, CustomerDetailPage, CustomersPage } from './pages/Customers';
 import { CardPage, JoinPage, PrivacyPage, PublicLayout } from './pages/public';
@@ -39,6 +40,7 @@ const router = createBrowserRouter([
       { path: '/program', element: <ProgramPage /> },
       { path: '/scan', element: <Navigate to="/" replace /> },
       { path: '/cards/:id', element: <StaffCardPage /> },
+      { path: '/new-customer', element: <NewCustomerPage /> },
       { path: '/customers', element: <CustomersPage /> },
       { path: '/customers/:id', element: <CustomerDetailPage /> },
       { path: '/audit', element: <AuditPage /> },

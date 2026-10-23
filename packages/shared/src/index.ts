@@ -135,6 +135,8 @@ export const programSchema = z.object({
   stampsRequired: z.coerce.number().int('v.int').min(2, 'v.stamps_range').max(30, 'v.stamps_range'),
   rewardText: z.string().trim().min(1, 'v.required').max(60, 'v.too_long'),
   cooldownHours: z.coerce.number().int('v.int').min(0, 'v.cooldown_range').max(168, 'v.cooldown_range'),
+  // не задано — остаётся как было (по умолчанию в БД включено)
+  firstStampOnJoin: z.boolean().optional(),
   bgColor: hexColor,
   fgColor: hexColor,
   labelColor: hexColor,
@@ -147,6 +149,7 @@ export interface ProgramDto {
   stampsRequired: number;
   rewardText: string;
   cooldownHours: number;
+  firstStampOnJoin: boolean;
   bgColor: string;
   fgColor: string;
   labelColor: string;
@@ -174,7 +177,7 @@ export interface PublicSalonDto {
   slug: string;
   address: string | null;
   phone: string | null;
-  program: Omit<ProgramDto, 'id' | 'cooldownHours'> | null;
+  program: Omit<ProgramDto, 'id' | 'cooldownHours' | 'firstStampOnJoin'> | null;
 }
 
 export interface PublicCardDto {
@@ -214,6 +217,14 @@ export interface StaffCardDto {
   revocable: { eventId: string; until: string } | null;
   nextAppointmentAt: string | null;
   timezone: string;
+}
+
+/** Регистрация клиентки на кассе: та же форма, что и по QR-постеру. */
+export interface CounterRegisterResponse {
+  cardId: string;
+  /** false — клиентка с этим телефоном/email уже была, открыта её карта */
+  created: boolean;
+  firstStamp: boolean;
 }
 
 export interface StampResultDto {

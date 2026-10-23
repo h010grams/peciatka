@@ -78,6 +78,8 @@ export const DEFAULT_PROGRAM = {
   stampsRequired: 5,
   rewardText: 'Zľava 15 %',
   cooldownHours: 12,
+  // в большинстве тестов проверяем штампы с нуля; первый штамп — в registration.test.ts
+  firstStampOnJoin: false,
   bgColor: '#1F1F1F',
   fgColor: '#FFFFFF',
   labelColor: '#C9A96E',

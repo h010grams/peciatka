@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { StaffCardDto, StampResultDto } from '@peciatka/shared';
+import type { CounterRegisterResponse, StaffCardDto, StampResultDto } from '@peciatka/shared';
 import { api, ApiError } from '../lib/api';
 import { formatDateTime, formatRelative, toLocalInput } from '../lib/format';
 import { Button, Card, ErrorAlert, Input, Spinner, buttonClass } from '../components/ui';
@@ -39,6 +39,18 @@ export function StaffCardPage() {
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [appt, setAppt] = useState('');
   const [countdown, setCountdown] = useState<number | null>(null);
+  // пришли с экрана «Новая клиентка» — сразу показываем QR для добавления карты в Wallet
+  const registered = (useLocation().state as { registered?: CounterRegisterResponse } | null)?.registered;
+  const [showQr, setShowQr] = useState(!!registered);
+  useEffect(() => {
+    if (!registered) return;
+    setFeedback({
+      kind: registered.firstStamp ? 'reward' : 'success',
+      text: registered.created
+        ? t(registered.firstStamp ? 'newcust.created_stamp' : 'newcust.created')
+        : t('newcust.existing'),
+    });
+  }, [registered, t]);
 
   const key = ['staff-card', id];
   const card = useQuery({ queryKey: key, queryFn: () => api.get<StaffCardDto>(`/cards/${id}`) });
@@ -160,6 +172,19 @@ export function StaffCardPage() {
         </div>
       )}
 
+      {showQr && (
+        <Card className="space-y-3 text-center">
+          <h2 className="text-lg font-semibold">{t('walletqr.title')}</h2>
+          <p className="text-sm text-stone-600">{t('walletqr.text')}</p>
+          <div className="flex justify-center">
+            <img src={`/api/cards/${id}/wallet-qr.svg`} alt="QR" className="size-56 rounded-xl bg-white p-2" />
+          </div>
+          <Button variant="secondary" className="w-full" onClick={() => setShowQr(false)}>
+            {t('walletqr.done')}
+          </Button>
+        </Card>
+      )}
+
       {/* Награда — первое, что видит администратор: её применяют при оплате */}
       {c.rewardsAvailable > 0 && (
         <div className="space-y-3 rounded-2xl border-2 border-brand-300 bg-brand-50 p-4 text-center">
@@ -222,7 +247,7 @@ export function StaffCardPage() {
         {t('counter.next')}
       </Link>
 
-      <div className="flex justify-center gap-5 pb-2 text-sm text-stone-500">
+      <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 pb-2 text-sm text-stone-500">
         {c.revocable && (
           <button
             className="underline disabled:opacity-50"
@@ -230,6 +255,11 @@ export function StaffCardPage() {
             onClick={() => window.confirm(t('staffcard.revoke_confirm')) && revoke.mutate()}
           >
             {t('staffcard.revoke')}
+          </button>
+        )}
+        {!showQr && (
+          <button className="underline" onClick={() => { stay(); setShowQr(true); }}>
+            {t('walletqr.show')}
           </button>
         )}
         <Link to={`/customers/${c.customer.id}`} className="underline">
