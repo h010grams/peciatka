@@ -1,5 +1,7 @@
 # Pečiatka — digital loyalty cards for small salons
 
+[![CI](https://github.com/h010grams/peciatka/actions/workflows/ci.yml/badge.svg)](https://github.com/h010grams/peciatka/actions/workflows/ci.yml)
+
 **Pečiatka** (Slovak for *"stamp"*) replaces paper stamp cards in small beauty salons — nail studios, barbershops, hair and brow/lash salons — with a digital loyalty card that lives in **Apple Wallet** and **Google Wallet**.
 
 A client scans a QR code at the counter and gets the card on her phone in under a minute. At checkout, the stylist scans the card with their own phone and adds a stamp — the card in the client's Wallet updates itself and shows a notification. After N visits the reward appears automatically.
@@ -92,6 +94,8 @@ Each event (stamp, reward, reminder) produces exactly **one** notification: thro
 ```bash
 pnpm test
 ```
+
+The same checks (typecheck, all tests on a real PostgreSQL, build) run on every push with GitHub Actions — see `.github/workflows/ci.yml`.
 
 ## Running locally
 
