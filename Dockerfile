@@ -4,7 +4,7 @@
 FROM node:22-bookworm-slim AS build
 # openssl нужен Prisma, ca-certificates — для запросов к Apple/Google
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
-RUN corepack enable
+RUN npm install -g pnpm@12.9.1
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
@@ -19,7 +19,7 @@ RUN pnpm build
 
 FROM node:22-bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
-RUN corepack enable
+RUN npm install -g pnpm@12.9.1
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app /app
