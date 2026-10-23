@@ -37,7 +37,7 @@ async function lastActiveStamp(db: Tx, cardId: string) {
     SELECT e.id, e."createdAt" FROM "StampEvent" e
     WHERE e."cardId" = ${cardId}::uuid AND e.type = 'ADD'
       AND NOT EXISTS (SELECT 1 FROM "StampEvent" r WHERE r."revokesEventId" = e.id)
-    ORDER BY e."createdAt" DESC
+    ORDER BY e.seq DESC
     LIMIT 1`;
   return rows[0] ?? null;
 }

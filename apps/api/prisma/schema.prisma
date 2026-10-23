@@ -243,6 +243,8 @@ model StampEvent {
   actorUserId    String?   @db.Uuid // null — штамп поставила система (первый штамп при самостоятельной регистрации)
   revokesEventId String?   @unique @db.Uuid
   createdAt      DateTime  @default(now()) @db.Timestamptz
+  // Порядок событий: время не годится — два штампа могут прийти в одну миллисекунду
+  seq            Int       @default(autoincrement())
 
   salon Salon @relation(fields: [salonId], references: [id], onDelete: Cascade)
   card  Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)

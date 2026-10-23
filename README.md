@@ -86,7 +86,7 @@ Each event (stamp, reward, reminder) produces exactly **one** notification: thro
 
 ## Tests
 
-94 automated tests (Vitest):
+95 automated tests (Vitest):
 - unit tests for the stamping rules,
 - integration tests against a real PostgreSQL database: authentication, tenant isolation, roles, invitations, stamping, cooldown, concurrent scans, rewards, undo, reminders, customer search, GDPR export/deletion, statistics,
 - Wallet tests with self-signed certificates and mocked network calls: `.pkpass` contents and signature, the full PassKit Web Service flow, APNs token cleanup, retries, Google JWT signature and object updates.

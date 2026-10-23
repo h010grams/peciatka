@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../src/lib/prisma.js';
 import type { MemoryMailer } from '../src/lib/mailer.js';
 import { processReminders } from '../src/jobs/reminders.js';
+import { addStamp, revokeLastStamp } from '../src/services/cards.js';
 import { addStaff, createTestApp, joinCustomer, json, resetDb, salonWithProgram } from './helpers.js';
 
 let app: FastifyInstance;
@@ -211,6 +212,18 @@ describe('revoking a mistaken stamp', () => {
     const { cardId } = await joinCustomer(app, slug);
     const res = await owner.client.post(`/api/cards/${cardId}/stamps/revoke-last`);
     expect(json(res).error.code).toBe('nothing_to_revoke');
+  });
+
+  it('two stamps in the same millisecond: undo removes the latest one, not a random one', async () => {
+    const { owner, slug, salonId } = await salonWithProgram(app, { stampsRequired: 2, cooldownHours: 0 });
+    const { cardId } = await joinCustomer(app, slug);
+    const now = new Date();
+    await addStamp(salonId, cardId, owner.me.user.id, now);
+    await addStamp(salonId, cardId, owner.me.user.id, now); // этот штамп дал награду
+    await revokeLastStamp(salonId, cardId, owner.me.user.id, now);
+    const card = await prisma.card.findUniqueOrThrow({ where: { id: cardId } });
+    expect(card).toMatchObject({ stampCount: 1, rewardsAvailable: 0 });
+    expect((await prisma.reward.findFirstOrThrow({ where: { cardId } })).status).toBe('VOID');
   });
 
   it('revoking twice removes two different stamps', async () => {
