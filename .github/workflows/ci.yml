@@ -35,6 +35,8 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+          # pnpm is installed in the next step, so the automatic pnpm cache can't run here
+          package-manager-cache: false
 
       - name: Install pnpm
         run: npm install -g pnpm@12.9.1
