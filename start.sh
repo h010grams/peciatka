@@ -23,12 +23,11 @@ pnpm --filter api exec dotenv -e ../../.env -- prisma migrate deploy > .run/migr
 if [[ "$1" == "--phone" ]]; then
   pkill -f "cloudflared tunnel --no-autoupdate --url http://localhost:5174" 2>/dev/null || true
   nohup cloudflared tunnel --no-autoupdate --url http://localhost:5174 > .run/tunnel.log 2>&1 &
-  for i in {1..40}; do URL=$(grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' .run/tunnel.log | head -1); [ -n "$URL" ] && break; sleep 1; done
+  for i in {1..40}; do URL=$(grep -ao 'https://[a-z0-9-]*\.trycloudflare\.com' .run/tunnel.log | head -1); [ -n "$URL" ] && break; sleep 1; done
   [ -n "$URL" ] || { echo "✗ tunnel did not start, see .run/tunnel.log"; exit 1; }
   sed -i '' "s|^APP_URL=.*|APP_URL=$URL|" .env
   # the API reads APP_URL on start — restart it so links and Wallet cards use the new address
-  pkill -f "tsx watch --env-file=../../.env src/server.ts" 2>/dev/null || true
-  pkill -f "peciatka/node_modules/.*tsx.*src/server.ts" 2>/dev/null || true
+  pkill -f "watch --env-file=../../.env src/server.ts" 2>/dev/null || true
   sleep 1
 else
   sed -i '' "s|^APP_URL=.*|APP_URL=http://localhost:5174|" .env
