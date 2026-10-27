@@ -12,7 +12,7 @@ apps/api/.pgdata-server.log
 apps/web/.tunnel.log
 
 # локальные настройки Claude Code
-.claude/settings.local.json
+.claude/
 .run/
 
 # материалы для LinkedIn — хранятся только локально
