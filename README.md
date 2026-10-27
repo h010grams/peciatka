@@ -8,6 +8,8 @@ A client scans a QR code at the counter and gets the card on her phone in under 
 
 No app to install, no account for the client, setup in about 10 minutes for the salon.
 
+**Live demo:** https://peciatka.onrender.com (free instance — the first load after a pause can take up to a minute)
+
 <p align="center">
   <img src="docs/images/customer-card.jpg" alt="Customer loyalty card with stamps, reward and next appointment" width="300">
 </p>
@@ -117,7 +119,7 @@ Or, on macOS, start everything with one command (`./start.sh --phone` also opens
 
 Open http://localhost:5174 and register a salon. Without a mail provider key, emails (invitations, password reset) are printed to the API console.
 
-Apple Wallet and Google Wallet are optional: without credentials the Wallet buttons are hidden and clients use the web card. See [DEPLOY.md](DEPLOY.md) for credentials and deployment (Docker, Railway/Render + Neon).
+Apple Wallet and Google Wallet are optional: without credentials the Wallet buttons are hidden and clients use the web card. See [DEPLOY.md](DEPLOY.md) for credentials and deployment (Docker, Render + Neon).
 
 ## Project structure
 
@@ -136,7 +138,7 @@ packages/
 
 ## Status
 
-Working MVP. Next steps: deployment, Wallet testing on real devices, and a pilot with salons in Bratislava. Planned: "time for your next visit" reminders based on each client's visit rhythm, Google review prompts, and referral rewards.
+Working MVP, deployed on Render + Neon. Next steps: Wallet testing on real devices, and a pilot with salons in Bratislava. Planned: "time for your next visit" reminders based on each client's visit rhythm, Google review prompts, and referral rewards.
 
 ## Author
 

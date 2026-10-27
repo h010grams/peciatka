@@ -1,49 +1,58 @@
-# Deployment: Railway (or Render) + Neon
+# Deployment: Render + Neon
 
 A single container (see `Dockerfile`) serves the API, the web app and the PassKit Web Service from one domain.
 Database migrations run automatically on start (`prisma migrate deploy`).
 
+Live instance: https://peciatka.onrender.com
+
 > **HTTPS is required:** Apple Wallet (`webServiceURL`), the in-browser camera and Secure cookies don't work without it.
-> Railway and Render provide HTTPS automatically, both on their subdomain and on a custom domain.
+> Render provides HTTPS automatically, both on its `onrender.com` subdomain and on a custom domain.
 
 ## 1. Database — Neon
 
 1. https://neon.tech → New project → region **Frankfurt (eu-central-1)** (close to Slovakia, data stays in the EU).
-2. Copy the **direct connection string** (no `-pooler` in the host name) — Prisma migrations need a direct connection.
+2. **Connect** → copy the **direct connection string** (no `-pooler` in the host name) — Prisma migrations need a direct connection.
+   Remove `&channel_binding=require` from the end; `sslmode=require` keeps the connection encrypted.
    Format: `postgresql://user:pass@ep-xxx.eu-central-1.aws.neon.tech/neondb?sslmode=require`
-3. Enable point-in-time restore backups. The free tier keeps them only briefly; use a paid plan for production.
+3. To rotate the password: **Connect → Reset password** (or Branches → branch → Roles & Databases), then update `DATABASE_URL` on Render.
+4. Point-in-time restore: the free tier keeps history only briefly; use a paid plan for production.
 
 Supabase works too: Project Settings → Database → Connection string → **Session mode / direct**.
 
-## 2. Application — Railway
+## 2. Application — Render
 
 1. Push the code to GitHub.
-2. https://railway.app → New Project → Deploy from GitHub repo → pick the repository. Railway detects the `Dockerfile`.
-3. Settings → Networking → **Generate Domain** (or a custom domain, see section 3). Port: `3001`.
-4. Settings → Deploy → Healthcheck Path: `/api/health`.
-5. Variables (minimum):
+2. https://render.com → New → **Web Service** → connect the repository.
+3. Language **Docker**, branch `main`, region **Frankfurt** (same as the database).
+4. Instance type:
+   - **Free** for testing. The service sleeps after ~15 minutes without traffic; the first request then takes up to a minute, and background jobs (Wallet sync, reminders) pause while it sleeps.
+   - **Starter** for real salons — always on, so Wallet updates and reminders go out on time.
+5. Advanced → Health Check Path: `/api/health`.
+6. Environment variables (minimum):
 
 | Variable | Value |
 |---|---|
 | `DATABASE_URL` | connection string from Neon |
-| `APP_URL` | e.g. `https://cards.example.sk` (no trailing `/`) — **exactly the address clients see** |
+| `APP_URL` | e.g. `https://peciatka.onrender.com` (no trailing `/`) — **exactly the address clients see** |
 | `NODE_ENV` | `production` |
-| `PORT` | `3001` |
+| `APP_NAME` | service name |
 | `RESEND_API_KEY` | Resend API key (section 4) |
 | `MAIL_FROM` | `Pečiatka <noreply@example.sk>` |
-| `APP_NAME` | service name |
 
-Wallet variables are described in sections 5 and 6. Railway restarts the service automatically when variables change.
+`PORT` is set by Render; the server reads it. Wallet variables are described in sections 5 and 6.
+Saving changes on the **Environment** tab redeploys the service.
 
-### Render (alternative)
-New → Web Service → repository → Runtime **Docker** → instance type Starter (the free tier sleeps, and Wallet requests would time out) → same variables → Health Check Path `/api/health`.
+The service address is shown under its name at the top of the service page. If the name was taken, Render adds a suffix — update `APP_URL` to match.
+
+### Other hosts
+Any host that builds a `Dockerfile` works (Railway, Fly.io, a VPS with Docker): set the same variables and the health check path.
 
 ### Scaling
 Background jobs (Wallet sync, reminders) run inside the same process. Multiple instances are safe: jobs are claimed with `FOR UPDATE SKIP LOCKED` and reminders are marked atomically. One instance is enough for the MVP.
 
 ## 3. Custom domain
 
-Buy a domain → Railway: Custom Domain → add the CNAME record at your registrar → wait for the certificate.
+Buy a domain → Render: service → Settings → **Custom Domains** → add the domain → add the CNAME record at your registrar → wait for the certificate.
 Then **update `APP_URL`**. The address is printed on QR posters and embedded in Wallet cards, so choose it before printing posters.
 
 ## 4. Email — Resend
@@ -111,7 +120,7 @@ When everything works: Wallet Console → **Request publishing access** (busines
 
 ## 8. Operations
 
-- **Logs:** Railway → Deployments → View logs. Wallet sync errors are tagged `[wallet]`.
+- **Logs:** Render → service → **Logs**. Wallet sync errors are tagged `[wallet]`.
 - **Backups:** Neon point-in-time restore; test a restore on a copy once a month.
 - **New migrations:** locally `pnpm --filter api db:migrate --name <name>` → commit → the deployment applies them.
 - **Legal:** the consent text and the `/j/<salon>/privacy` page are templates — have them reviewed by a lawyer and sign a data processing agreement with each salon (Art. 28 GDPR). When the consent text changes, bump `CONSENT_VERSION` in `packages/shared/src/index.ts`.
