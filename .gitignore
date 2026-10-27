@@ -14,3 +14,6 @@ apps/web/.tunnel.log
 # локальные настройки Claude Code
 .claude/settings.local.json
 .run/
+
+# материалы для LinkedIn — хранятся только локально
+marketing/
